@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>May 2025 Calendar</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="main-container">
+        <div class="calendar-controls">
+            <button id="prev-month">&lt;</button>
+            <h2 id="month-year-display">April & May 2025</h2>
+            <button id="next-month">&gt;</button>
+        </div>
+
+        <div class="content-area">
+            <div class="calendars-wrapper">
+                <div class="calendar-container" id="calendar-1">
+                    <div class="calendar-header">
+                        <h3 id="month-year-1">April 2025</h3>
+                    </div>
+                    <div class="calendar-grid" id="calendar-grid-1">
+                        <div class="day-header">Sun</div>
+                        <div class="day-header">Mon</div>
+                        <div class="day-header">Tue</div>
+                        <div class="day-header">Wed</div>
+                        <div class="day-header">Thu</div>
+                        <div class="day-header">Fri</div>
+                        <div class="day-header">Sat</div>
+                    </div>
+                </div>
+
+                <div class="calendar-container" id="calendar-2">
+                    <div class="calendar-header">
+                        <h3 id="month-year-2">May 2025</h3>
+                    </div>
+                    <div class="calendar-grid" id="calendar-grid-2">
+                        <div class="day-header">Sun</div>
+                        <div class="day-header">Mon</div>
+                        <div class="day-header">Tue</div>
+                        <div class="day-header">Wed</div>
+                        <div class="day-header">Thu</div>
+                        <div class="day-header">Fri</div>
+                        <div class="day-header">Sat</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="event-progress-panel">
+                <h3>Checklist Progress</h3>
+            </div>
+        </div>
+    </div>
+
+    <div id="note-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h3 id="modal-date"></h3>
+            <label for="note-time">Time (optional):</label>
+            <input type="time" id="note-time" name="note-time">
+            <textarea id="note-input" placeholder="Write your notes here..."></textarea>
+
+            <div class="checklist-container">
+                <h4>Checklist</h4>
+                <ul id="checklist-items"></ul>
+                <div class="add-checklist-item">
+                    <input type="text" id="new-checklist-item" placeholder="Add new task...">
+                    <button type="button" id="add-item-button">+</button>
+                </div>
+            </div>
+
+            <button id="save-note">Save Note</button>
+            <button id="delete-note">Delete Note</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html> 
