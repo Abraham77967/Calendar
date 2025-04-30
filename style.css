@@ -1,3 +1,7 @@
+* {
+    box-sizing: border-box;
+}
+
 body {
     font-family: sans-serif;
     min-height: 100vh;
@@ -16,13 +20,12 @@ body {
 
 .content-area {
     display: flex;
-    flex-direction: column;
-    align-items: center;
+    flex-direction: column; /* Mobile first: default to column */
+    align-items: center; /* Center items when stacked */
+    gap: 30px;
     width: 100%;
-    max-width: 100%;
-    gap: 25px;
-    padding: 0 10px;
-    box-sizing: border-box;
+    padding: 0 15px; /* Add some horizontal padding */
+    /* max-width: 100%; Remove this */
     opacity: 0;
     animation: slideInUp 0.8s ease-out forwards;
     animation-delay: 0.2s;
@@ -31,9 +34,9 @@ body {
 .calendars-wrapper {
     display: flex;
     flex-direction: column;
-    width: 100%;
-    max-width: 800px;
     gap: 30px;
+    width: 100%;
+    max-width: 800px; /* Max width for stacked calendars */
 }
 
 .calendar-controls {
@@ -82,11 +85,9 @@ body {
     padding: 20px;
     border-radius: 8px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    width: 100%;
-    box-sizing: border-box;
+    width: 100%; /* Full width within wrapper */
     border: 1px solid #06202B;
     transition: box-shadow 0.3s, transform 0.2s;
-    margin-bottom: 0;
 }
 
 .calendar-container:hover {
@@ -109,8 +110,7 @@ body {
 .calendar-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 5px;
-    width: 100%;
+    gap: 5px; /* Slightly smaller gap for month view */
 }
 
 .day-header {
@@ -124,8 +124,8 @@ body {
 
 .day {
     border: 1px solid #ddd;
-    padding: 8px;
-    min-height: 90px;
+    padding: 8px; /* Adjusted padding */
+    min-height: 90px; /* Adjusted height */
     position: relative;
     cursor: pointer;
     transition: all 0.25s ease-out;
@@ -133,10 +133,8 @@ body {
     animation-fill-mode: both;
     display: flex;
     flex-direction: column;
-    justify-content: flex-start;
-    gap: 4px;
-    box-sizing: border-box;
-    overflow: hidden;
+    justify-content: flex-start; /* Start content at top */
+    gap: 4px; /* Space between elements in day */
 }
 
 /* Stagger the animation of days */
@@ -169,20 +167,22 @@ body {
 
 .day .day-number {
     font-weight: bold;
-    font-size: 0.95em;
+    font-size: 0.95em; /* Adjusted size */
     color: #06202B;
     align-self: flex-start;
 }
 
 .day .day-name {
+    /* Hide day name in month view by default, show in week view via JS potentially */
+    /* Or just leave it for consistency */
     font-size: 0.75em;
     color: #666;
     align-self: flex-start;
-    margin-top: 0;
-    display: none; /* Hidden by default */
+    margin-top: 0; /* Remove top margin */
+    display: none; /* Hide in default (month/desktop) view */
 }
 
-/* Show day name in week view */
+/* Style for week view days (to show day name) */
 .day.week-view .day-name {
     display: block;
 }
@@ -196,18 +196,20 @@ body {
 }
 
 .day .note-text {
-    font-size: 0.9em;
+    font-size: 0.9em; /* Adjusted size */
     font-weight: normal;
-    margin-top: auto; /* Push to bottom */
+    margin-top: auto; /* Push note to bottom */
     padding: 4px 6px;
     background-color: #077A7D;
     border-radius: 3px;
-    max-height: 55px;
+    max-height: 55px; /* Limit height */
     overflow: hidden;
     text-overflow: ellipsis;
     word-wrap: break-word;
     color: white;
     line-height: 1.3;
+    display: block;
+    transition: all 0.25s ease;
     width: 100%;
     box-sizing: border-box;
 }
@@ -507,8 +509,9 @@ body {
     border-radius: 12px;
     box-shadow: 0 3px 15px rgba(0, 0, 0, 0.12);
     width: 100%;
-    max-width: 800px;
-    box-sizing: border-box;
+    max-width: 800px; /* Match calendar wrapper width when stacked */
+    margin-top: 0; /* Reset margin */
+    max-height: none;
     overflow-y: auto;
     font-size: 1.05em;
     animation: slideInUp 0.8s ease-out;
@@ -516,7 +519,6 @@ body {
     opacity: 0;
     animation-fill-mode: forwards;
     transition: box-shadow 0.3s;
-    margin-top: 0;
 }
 
 #event-progress-panel:hover {
@@ -796,107 +798,61 @@ body {
     animation: fadeIn 0.5s ease-out;
 }
 
-/* Large desktop screens - implement side-by-side layout */
+/* Large desktop screens - side-by-side layout */
 @media (min-width: 1400px) {
     .content-area {
-        flex-direction: row;
-        align-items: flex-start;
-        justify-content: center;
-        max-width: 1400px;
-        margin: 0 auto;
-        gap: 40px;
+        flex-direction: row; /* Switch to row */
+        align-items: flex-start; /* Align tops */
+        justify-content: center; /* Center content horizontally */
+        max-width: 1800px; /* Optional: overall max width */
+        margin: 0 auto; /* Center content area */
     }
     
     .calendars-wrapper {
-        flex: 0 0 800px; /* Don't grow, don't shrink, exact width */
-        max-width: 800px;
+        flex: 1 1 auto; /* Allow grow and shrink, auto basis */
+        max-width: none; /* Remove max-width limit */
+        min-width: 0; /* Allow shrinking */
+        order: 1; /* Ensure calendars are first */
     }
     
     #event-progress-panel {
-        flex: 0 0 400px; /* Don't grow, don't shrink, exact width */
-        max-width: 400px;
-        max-height: 85vh;
+        width: 450px; /* Fixed width for panel */
+        max-width: 450px; /* Explicit max-width */
+        flex-shrink: 0; /* Prevent shrinking */
+        max-height: 85vh; /* Limit height */
+        order: 2; /* Ensure panel is second */
     }
 }
 
-/* Medium screens */
+/* Responsive Styles (Tablets/Smaller Laptops) */
 @media (max-width: 1399px) {
-    .calendar-container {
-        margin-bottom: 0;
-    }
-}
-
-/* Smaller screens */
-@media (max-width: 1200px) {
-    .calendars-wrapper {
-        max-width: 650px;
-    }
-    
+     /* Styles defined outside media queries (mobile-first) handle this */
+     /* Hide second calendar for any non-desktop view */
     #calendar-2 {
         display: none;
     }
     
     #toggle-view-button {
-        display: inline-block !important;
+        display: inline-block !important; /* Show toggle button */
     }
 }
 
-/* Mobile screens */
+/* Specific Mobile Styles (Phones) */
 @media (max-width: 768px) {
-    body {
-        padding: 5px;
-    }
-    
-    .main-container {
-        padding: 0;
-    }
-    
+    /* .content-area padding is handled above */
+    /* .calendars-wrapper uses default */
     .calendar-container {
         padding: 10px;
     }
-    
-    .calendars-wrapper,
-    #event-progress-panel {
-        max-width: 100%;
-    }
-    
-    #event-progress-panel {
-        padding: 15px;
-    }
-    
-    #toggle-view-button {
-        font-size: 0.7em;
-        padding: 4px 8px;
-        margin-left: 10px;
-    }
-    
-    .calendar-grid {
+    /* Keep other mobile-specific styles like fonts, etc. */
+    .day {
+        min-height: 90px;
+        padding: 8px;
         gap: 3px;
     }
-    
-    .day {
-        min-height: 60px;
-        padding: 5px;
-    }
-    
-    .day.week-view {
-        min-height: 80px;
-        padding: 6px;
-    }
-    
-    .day .day-number {
-        font-size: 0.85em;
-    }
-    
-    .day.week-view .day-name {
-        font-size: 0.7em;
-    }
-    
-    .day .note-text {
-        font-size: 0.8em;
-        padding: 3px 4px;
-        max-height: 40px;
-    }
+     #event-progress-panel {
+        padding: 15px;
+     }
 }
 
 #toggle-view-button {
@@ -915,118 +871,47 @@ body {
 
 /* Day styling for week view */
 .day.week-view {
-    min-height: 100px;
-    border-radius: 6px;
+    min-height: 120px;
+    border-radius: 8px;
+    padding: 8px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
 .day.week-view .day-number {
-    font-size: 1rem;
+    font-size: 1.1rem;
     font-weight: 600;
 }
 
 .day.week-view .day-name {
-    font-size: 0.85rem;
-    margin-bottom: 2px;
+    font-size: 0.9rem;
+    color: #666;
+    margin-bottom: 4px;
 }
 
 /* Note styling in week view */
 .day.week-view .note-item {
-    display: none;  /* Removing this style as it's not used */
+    padding: 4px 8px;
+    margin-bottom: 4px;
+    border-radius: 4px;
+    background-color: rgba(235, 245, 255, 0.7);
+    font-size: 0.85rem;
+    word-break: break-word;
+    max-height: 60px;
+    overflow-y: auto;
 }
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-    /* These styles are already defined in the previous media query */
-}
-
-/* Loading Screen */
-#loading-screen {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: #F5EEDD;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-    transition: opacity 0.5s ease-out, visibility 0.5s ease-out;
-}
-
-.loading-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-}
-
-.calendar-icon {
-    width: 80px;
-    height: 90px;
-    position: relative;
-    margin-bottom: 20px;
-}
-
-.calendar-top {
-    width: 80%;
-    height: 20px;
-    background-color: #077A7D;
-    border-radius: 5px 5px 0 0;
-    position: absolute;
-    top: 0;
-    left: 10%;
-}
-
-.calendar-body {
-    width: 100%;
-    height: 70px;
-    background-color: white;
-    position: absolute;
-    bottom: 0;
-    border-radius: 5px;
-    border: 2px solid #077A7D;
-    animation: pulse 1.5s infinite ease-in-out;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-}
-
-.loading-spinner {
-    width: 40px;
-    height: 40px;
-    margin: 20px auto;
-    border: 4px solid rgba(7, 122, 125, 0.3);
-    border-radius: 50%;
-    border-top-color: #077A7D;
-    animation: spin 1s infinite linear;
-}
-
-#loading-screen p {
-    color: #06202B;
-    font-size: 1.2em;
-    font-weight: 500;
-    margin-top: 10px;
-    animation: fadeInOut 1.5s infinite ease-in-out;
-}
-
-.loading-hidden {
-    opacity: 0;
-    visibility: hidden;
-}
-
-@keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-}
-
-@keyframes pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-    100% { transform: scale(1); }
-}
-
-@keyframes fadeInOut {
-    0% { opacity: 0.7; }
-    50% { opacity: 1; }
-    100% { opacity: 0.7; }
+    .day.week-view {
+        min-height: 100px;
+        padding: 6px 8px;
+    }
+    
+    .day.week-view .note-item {
+        padding: 3px 6px;
+        font-size: 0.8rem;
+        max-height: 50px;
+    }
 } 
