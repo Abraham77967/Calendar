@@ -807,6 +807,94 @@ document.addEventListener('DOMContentLoaded', () => {
     // Add resize listener
     window.addEventListener('resize', renderCalendarView);
 
+    // Authorization button event listeners
+    googleSignInButton.addEventListener('click', () => {
+        console.log('Starting Google sign in process');
+        const provider = new firebase.auth.GoogleAuthProvider();
+        
+        // Add scopes if needed
+        provider.addScope('https://www.googleapis.com/auth/contacts.readonly');
+        
+        // Set custom parameters
+        provider.setCustomParameters({
+            'login_hint': 'user@example.com',
+            'prompt': 'select_account'
+        });
+        
+        firebase.auth().signInWithPopup(provider)
+            .then((result) => {
+                console.log('Google sign in successful:', result.user.email);
+            })
+            .catch((error) => {
+                console.error('Google sign in error:', error);
+                
+                // Try redirect method if popup fails
+                if (error.code === 'auth/popup-blocked' || error.code === 'auth/popup-closed-by-user') {
+                    console.log('Popup was blocked or closed, trying redirect method');
+                    firebase.auth().signInWithRedirect(provider);
+                } else {
+                    alert(`Sign in failed: ${error.message}`);
+                }
+            });
+    });
+    
+    // Fix the logout event handling
+    if (logoutButton) {
+        logoutButton.addEventListener('click', () => {
+            console.log('Logout button clicked');
+            
+            // First hide any open modals
+            if (noteModal) {
+                noteModal.style.display = 'none';
+            }
+            
+            // Then sign out from Firebase
+            firebase.auth().signOut()
+                .then(() => {
+                    console.log('User signed out successfully');
+                    
+                    // Clear data
+                    notes = clearAllCalendarData();
+                    
+                    // Reset to default view
+                    currentView = 'week';
+                    mobileWeekStartDate = new Date();
+                    mobileWeekStartDate.setHours(0, 0, 0, 0);
+                    desktopMonthDate = new Date();
+                    desktopMonthDate.setDate(1);
+                    
+                    // Show loading screen briefly during transition
+                    const loadingScreen = document.getElementById('loading-screen');
+                    if (loadingScreen) {
+                        loadingScreen.classList.remove('loading-hidden');
+                        loadingScreen.style.display = 'flex';
+                    }
+                    
+                    // Manually update UI rather than reload
+                    setTimeout(() => {
+                        try {
+                            // Hide user info, show login
+                            if (loginForm) loginForm.style.display = 'block';
+                            if (userInfo) userInfo.style.display = 'none';
+                            
+                            // Re-render with empty state
+                            renderCalendarView();
+                            
+                            // Hide loading again
+                            hideLoadingScreen();
+                        } catch (error) {
+                            console.error("Error during signout UI update:", error);
+                            window.location.reload(); // Last resort
+                        }
+                    }, 300);
+                })
+                .catch((error) => {
+                    console.error('Sign out error:', error);
+                    alert('Error signing out: ' + error.message);
+                });
+        });
+    }
+
     // Initial Render
     renderCalendarView();
 }); 
