@@ -24,6 +24,19 @@ function clearAllCalendarData() {
     return {};
 }
 
+// Function to hide loading screen
+function hideLoadingScreen() {
+    const loadingScreen = document.getElementById('loading-screen');
+    if (loadingScreen) {
+        loadingScreen.classList.add('loading-hidden');
+        
+        // Optional: remove from DOM after transition ends
+        setTimeout(() => {
+            loadingScreen.style.display = 'none';
+        }, 600); // Slightly longer than the CSS transition
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     // Declare notes in the outer scope of the DOMContentLoaded listener
     let notes = clearAllCalendarData();
@@ -82,53 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // --- Firebase Authentication Logic ---
-    
-    // Google Sign-in
-    googleSignInButton.addEventListener('click', () => {
-        console.log('Starting Google sign in process');
-        const provider = new firebase.auth.GoogleAuthProvider();
-        
-        // Add scopes if needed
-        provider.addScope('https://www.googleapis.com/auth/contacts.readonly');
-        
-        // Set custom parameters
-        provider.setCustomParameters({
-            'login_hint': 'user@example.com',
-            'prompt': 'select_account'
-        });
-        
-        firebase.auth().signInWithPopup(provider)
-            .then((result) => {
-                console.log('Google sign in successful:', result.user.email);
-            })
-            .catch((error) => {
-                console.error('Google sign in error:', error);
-                
-                // Try redirect method if popup fails
-                if (error.code === 'auth/popup-blocked' || error.code === 'auth/popup-closed-by-user') {
-                    console.log('Popup was blocked or closed, trying redirect method');
-                    firebase.auth().signInWithRedirect(provider);
-                } else {
-                    alert(`Sign in failed: ${error.message}`);
-                }
-            });
-    });
-    
-    // Logout event
-    logoutButton.addEventListener('click', () => {
-        firebase.auth().signOut()
-            .then(() => {
-                console.log('User signed out successfully');
-                // Force a complete page reload to ensure clean state
-                window.location.reload(true);
-            })
-            .catch((error) => {
-                console.error('Sign out error:', error);
-            });
-    });
-    
-    // Check authentication state
+    // Modify the auth state change handler to hide loading screen
     firebase.auth().onAuthStateChanged(user => {
         if (user) {
             // User is signed in
@@ -143,39 +110,35 @@ document.addEventListener('DOMContentLoaded', () => {
                 .then(doc => {
                     console.log('Firestore response:', doc.exists ? 'Document exists' : 'No document found');
                     if (doc.exists && doc.data().notes) {
-                        // Use cloud data only when signed in
                         notes = doc.data().notes;
                         console.log('Loaded notes from cloud');
-                        renderCalendarView();
                     } else {
-                        // No cloud data, start with empty notes
                         notes = {};
                         console.log('No existing notes found in cloud, starting fresh');
-                        renderCalendarView();
                     }
+                    renderCalendarView();
+                    hideLoadingScreen(); // Hide loading screen after rendering
                 })
                 .catch(error => {
                     console.error("Error fetching notes:", error);
                     alert("Error fetching your calendar data: " + error.message);
-                    notes = {}; // Reset on error
-                    renderCalendarView(); // Render empty view on error
+                    notes = {};
+                    renderCalendarView();
+                    hideLoadingScreen(); // Hide loading screen even on error
                 });
         } else {
-            // User is signed out - aggressively clear all data
+            // User is signed out
             console.log('No user logged in - clearing all data');
             loginForm.style.display = 'block';
             userInfo.style.display = 'none';
             
-            // Clear all calendar data completely
             notes = clearAllCalendarData();
             console.log('All calendar data cleared');
             
-            // Re-render with empty data
             renderCalendarView();
+            hideLoadingScreen(); // Hide loading screen for signed out users
         }
     });
-    
-    // --- End Firebase Authentication Logic ---
 
     // --- Helper Function: Format Time Difference ---
     function formatTimeDifference(date1, date2) {

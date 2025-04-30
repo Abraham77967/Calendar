@@ -937,4 +937,96 @@ body {
 /* Responsive adjustments */
 @media (max-width: 768px) {
     /* These styles are already defined in the previous media query */
+}
+
+/* Loading Screen */
+#loading-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #F5EEDD;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    transition: opacity 0.5s ease-out, visibility 0.5s ease-out;
+}
+
+.loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.calendar-icon {
+    width: 80px;
+    height: 90px;
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.calendar-top {
+    width: 80%;
+    height: 20px;
+    background-color: #077A7D;
+    border-radius: 5px 5px 0 0;
+    position: absolute;
+    top: 0;
+    left: 10%;
+}
+
+.calendar-body {
+    width: 100%;
+    height: 70px;
+    background-color: white;
+    position: absolute;
+    bottom: 0;
+    border-radius: 5px;
+    border: 2px solid #077A7D;
+    animation: pulse 1.5s infinite ease-in-out;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    margin: 20px auto;
+    border: 4px solid rgba(7, 122, 125, 0.3);
+    border-radius: 50%;
+    border-top-color: #077A7D;
+    animation: spin 1s infinite linear;
+}
+
+#loading-screen p {
+    color: #06202B;
+    font-size: 1.2em;
+    font-weight: 500;
+    margin-top: 10px;
+    animation: fadeInOut 1.5s infinite ease-in-out;
+}
+
+.loading-hidden {
+    opacity: 0;
+    visibility: hidden;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+@keyframes fadeInOut {
+    0% { opacity: 0.7; }
+    50% { opacity: 1; }
+    100% { opacity: 0.7; }
 } 
