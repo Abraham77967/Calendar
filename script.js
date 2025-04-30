@@ -25,7 +25,7 @@ function clearAllCalendarData() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Start with empty data - important!
+    // Declare notes in the outer scope of the DOMContentLoaded listener
     let notes = clearAllCalendarData();
     
     // Check for redirect result first
@@ -40,15 +40,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    // Get references for BOTH calendars and shared controls
-    const monthYearDisplayElement = document.getElementById('month-year-display');
-    const calendarGrid1 = document.getElementById('calendar-grid-1');
-    const monthYearElement1 = document.getElementById('month-year-1');
-    const calendarGrid2 = document.getElementById('calendar-grid-2');
-    const monthYearElement2 = document.getElementById('month-year-2');
-
-    const prevMonthButton = document.getElementById('prev-month');
-    const nextMonthButton = document.getElementById('next-month');
+    // Get references for calendar and shared controls
+    const monthYearDisplayElement = document.getElementById('month-year-display'); // Top control header
+    const dateRangeDisplayElement = document.getElementById('date-range-display'); // Calendar header
+    const calendarGrid = document.getElementById('calendar-grid-main');
+    
+    const prevWeekButton = document.getElementById('prev-month'); // Re-purpose button
+    const nextWeekButton = document.getElementById('next-month'); // Re-purpose button
+    
     const noteModal = document.getElementById('note-modal');
     const modalDateElement = document.getElementById('modal-date');
     const noteInputElement = document.getElementById('note-input');
@@ -67,8 +66,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const userEmail = document.getElementById('user-email');
     const googleSignInButton = document.getElementById('google-signin-button');
     const logoutButton = document.getElementById('logout-button');
+    const toggleViewButton = document.getElementById('toggle-view-button'); // Get toggle button
 
-    let currentStartDate = new Date(2025, 3, 1); // Start with April 2025 (Month is 0-indexed)
+    let currentView = 'week'; // 'week' or 'month'
+    let currentMonthDate = new Date(); // For month view navigation
+    currentMonthDate.setDate(1); // Start at the 1st of the month
+    let currentStartDate = new Date(); // Start from today for week view
+    currentStartDate.setHours(0, 0, 0, 0);
     let selectedDateString = null;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -137,12 +141,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         // Use cloud data only when signed in
                         notes = doc.data().notes;
                         console.log('Loaded notes from cloud');
-                        renderBothCalendars();
+                        renderCalendarView();
                     } else {
                         // No cloud data, start with empty notes
                         notes = {};
                         console.log('No existing notes found in cloud, starting fresh');
-                        renderBothCalendars();
+                        renderCalendarView();
                     }
                 })
                 .catch(error => {
@@ -160,7 +164,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('All calendar data cleared');
             
             // Re-render with empty data
-            renderBothCalendars();
+            renderCalendarView();
         }
     });
     
@@ -185,22 +189,37 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     // --- End Helper Function ---
 
-    // --- Refactored Rendering Function ---
-    function renderCalendar(targetDate, gridElement, monthYearElement) {
-        // Safety check - don't display notes if not logged in
+    // --- Combined Render Function ---
+    function renderCalendarView() {
+        if (currentView === 'week') {
+            renderTwoWeekView();
+            toggleViewButton.textContent = 'Month View';
+        } else {
+            renderMonthView();
+            toggleViewButton.textContent = 'Week View';
+        }
+        // Always render progress panel
+        renderEventProgressPanel();
+    }
+
+    // --- NEW: Render Month View ---
+    function renderMonthView() {
         if (!firebase.auth().currentUser) {
             notes = clearAllCalendarData();
         }
-        
-        // Clear previous grid except headers
-        while (gridElement.children.length > 7) {
-            gridElement.removeChild(gridElement.lastChild);
+
+        // Clear previous grid days
+        while (calendarGrid.children.length > 7) {
+            calendarGrid.removeChild(calendarGrid.lastChild);
         }
 
-        const year = targetDate.getFullYear();
-        const month = targetDate.getMonth(); // 0-indexed
+        const year = currentMonthDate.getFullYear();
+        const month = currentMonthDate.getMonth(); // 0-indexed
 
-        monthYearElement.textContent = `${targetDate.toLocaleString('default', { month: 'long' })} ${year}`;
+        // Update header display
+        const monthName = currentMonthDate.toLocaleString('default', { month: 'long' });
+        dateRangeDisplayElement.textContent = `${monthName} ${year}`;
+        monthYearDisplayElement.textContent = `${monthName} ${year}`; // Update top control header too
 
         const firstDayOfMonth = new Date(year, month, 1).getDay(); // 0 = Sunday, 1 = Monday, ...
         const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -209,13 +228,18 @@ document.addEventListener('DOMContentLoaded', () => {
         for (let i = 0; i < firstDayOfMonth; i++) {
             const emptyDiv = document.createElement('div');
             emptyDiv.classList.add('day', 'other-month');
-            gridElement.appendChild(emptyDiv);
+            calendarGrid.appendChild(emptyDiv);
         }
 
         // Add days of the month
         for (let day = 1; day <= daysInMonth; day++) {
             const dayElement = document.createElement('div');
+            const currentDate = new Date(year, month, day);
+            currentDate.setHours(0, 0, 0, 0);
+
             dayElement.classList.add('day');
+            // Use slightly smaller class for month view days if needed
+            // dayElement.classList.add('day-month-view'); 
             const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
             dayElement.dataset.date = dateString;
 
@@ -225,38 +249,90 @@ document.addEventListener('DOMContentLoaded', () => {
             dayElement.appendChild(dayNumber);
 
             // Check if this day is today
-            const cellDate = new Date(year, month, day);
-            cellDate.setHours(0, 0, 0, 0); // Ensure no time component for comparison
-            if (cellDate.getTime() === today.getTime()) {
+            if (currentDate.getTime() === today.getTime()) {
                 dayElement.classList.add('today');
             }
 
-            // Display note text, time, and time difference if note exists
+            // Display note text
             const noteData = notes[dateString];
-            if (firebase.auth().currentUser && noteData && noteData.text) {
+            if (firebase.auth().currentUser && noteData && (noteData.text || (noteData.checklist && noteData.checklist.length > 0))) {
                 const noteTextElement = document.createElement('div');
                 noteTextElement.classList.add('note-text');
-                let displayText = noteData.text;
+                let displayText = noteData.text || '(Checklist)';
                 if (noteData.time) displayText = `${noteData.time} - ${displayText}`;
                 noteTextElement.textContent = displayText;
                 dayElement.appendChild(noteTextElement);
-
-                const noteDate = new Date(year, month, day); // Use cellDate defined above?
-                noteDate.setHours(0,0,0,0);
-                const timeDiffString = formatTimeDifference(noteDate, today);
-                const timeDiffElement = document.createElement('span');
-                timeDiffElement.classList.add('time-diff');
-                timeDiffElement.textContent = ` ${timeDiffString}`;
-                noteTextElement.appendChild(timeDiffElement);
             }
 
             dayElement.addEventListener('click', () => openNoteModal(dateString));
-            gridElement.appendChild(dayElement);
+            calendarGrid.appendChild(dayElement);
         }
     }
-    // --- End Refactored Rendering Function ---
+    // --- End Render Month View ---
 
-    // --- NEW: Render Event Progress Panel ---
+    // --- Render Two Week View (Minor change to call progress panel) ---
+    function renderTwoWeekView() {
+        if (!firebase.auth().currentUser) {
+            notes = clearAllCalendarData();
+        }
+        
+        // Clear previous grid days
+        while (calendarGrid.children.length > 7) {
+            calendarGrid.removeChild(calendarGrid.lastChild);
+        }
+
+        const startDate = new Date(currentStartDate);
+        const endDate = new Date(startDate);
+        endDate.setDate(startDate.getDate() + 13);
+
+        // Update header display
+        const options = { month: 'short', day: 'numeric' };
+        const displayOptions = { month: 'long', year: 'numeric' };
+        dateRangeDisplayElement.textContent = `${startDate.toLocaleDateString('default', options)} - ${endDate.toLocaleDateString('default', options)}, ${startDate.getFullYear()}`;
+        monthYearDisplayElement.textContent = `${startDate.toLocaleDateString('default', displayOptions)}`; 
+
+        for (let i = 0; i < 14; i++) {
+            const dayElement = document.createElement('div');
+            const currentDate = new Date(startDate);
+            currentDate.setDate(startDate.getDate() + i);
+            currentDate.setHours(0, 0, 0, 0);
+
+            dayElement.classList.add('day');
+            const dateString = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`;
+            dayElement.dataset.date = dateString;
+
+            const dayNumber = document.createElement('span');
+            dayNumber.classList.add('day-number');
+            dayNumber.textContent = currentDate.getDate();
+            dayElement.appendChild(dayNumber);
+            
+            const dayName = document.createElement('span');
+            dayName.classList.add('day-name');
+            dayName.textContent = currentDate.toLocaleDateString('default', { weekday: 'short' });
+            dayElement.appendChild(dayName);
+
+            if (currentDate.getTime() === today.getTime()) {
+                dayElement.classList.add('today');
+            }
+
+            const noteData = notes[dateString];
+            if (firebase.auth().currentUser && noteData && (noteData.text || (noteData.checklist && noteData.checklist.length > 0))) { 
+                const noteTextElement = document.createElement('div');
+                noteTextElement.classList.add('note-text');
+                let displayText = noteData.text || '(Checklist)';
+                if (noteData.time) displayText = `${noteData.time} - ${displayText}`;
+                noteTextElement.textContent = displayText;
+                dayElement.appendChild(noteTextElement);
+            }
+
+            dayElement.addEventListener('click', () => openNoteModal(dateString));
+            calendarGrid.appendChild(dayElement);
+        }
+        // Note: renderEventProgressPanel is now called by renderCalendarView
+    }
+    // --- End Render Two Week View ---
+
+    // --- Event Progress Panel Rendering ---
     function renderEventProgressPanel() {
         // Skip rendering if not logged in
         if (!firebase.auth().currentUser) {
@@ -407,33 +483,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (progressSummary) progressSummary.textContent = `${completedItems}/${totalItems} Tasks Completed`;
     }
     // --- End Event Progress Panel Rendering ---
-
-    // --- Function to Render Both Calendars ---
-    function renderBothCalendars() {
-        // Check if user is signed in - if not, ensure notes is empty
-        if (!firebase.auth().currentUser) {
-            // Aggressively clear notes to ensure nothing is displayed when logged out
-            notes = clearAllCalendarData();
-            console.log('Cleared calendar data before rendering (not logged in)');
-        }
-        
-        const firstMonthDate = new Date(currentStartDate);
-        const secondMonthDate = new Date(currentStartDate);
-        secondMonthDate.setMonth(secondMonthDate.getMonth() + 1);
-
-        renderCalendar(firstMonthDate, calendarGrid1, monthYearElement1);
-        renderCalendar(secondMonthDate, calendarGrid2, monthYearElement2);
-
-        // Update the main display header
-        const month1Name = firstMonthDate.toLocaleString('default', { month: 'long' });
-        const month2Name = secondMonthDate.toLocaleString('default', { month: 'long' });
-        const year1 = firstMonthDate.getFullYear();
-        const year2 = secondMonthDate.getFullYear();
-        monthYearDisplayElement.textContent = year1 === year2 ? `${month1Name} & ${month2Name} ${year1}` : `${month1Name} ${year1} & ${month2Name} ${year2}`;
-
-        renderEventProgressPanel(); // Render the panel after calendars
-    }
-    // --- End Function to Render Both Calendars ---
 
     // --- Modal Functions (open, close - unchanged, save, delete - updated selector) ---
     function openNoteModal(dateString) {
@@ -594,7 +643,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             closeNoteModal();
-            renderBothCalendars(); // Re-render to show changes immediately
+            renderCalendarView(); // Re-render to show changes immediately
         }
     }
 
@@ -627,20 +676,42 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             closeNoteModal();
-            renderBothCalendars(); // Re-render to remove the note visually
+            renderCalendarView(); // Re-render to remove the note visually
         }
     }
     // --- End Modal Functions ---
 
-    // --- Event Listeners (Add listener for checklist add button) ---
-    prevMonthButton.addEventListener('click', () => {
-        currentStartDate.setMonth(currentStartDate.getMonth() - 1);
-        renderBothCalendars();
+    // --- Event Listeners ---
+    prevWeekButton.addEventListener('click', () => {
+        if (currentView === 'week') {
+            currentStartDate.setDate(currentStartDate.getDate() - 7);
+        } else {
+            currentMonthDate.setMonth(currentMonthDate.getMonth() - 1);
+        }
+        renderCalendarView();
     });
 
-    nextMonthButton.addEventListener('click', () => {
-        currentStartDate.setMonth(currentStartDate.getMonth() + 1);
-        renderBothCalendars();
+    nextWeekButton.addEventListener('click', () => {
+        if (currentView === 'week') {
+            currentStartDate.setDate(currentStartDate.getDate() + 7);
+        } else {
+            currentMonthDate.setMonth(currentMonthDate.getMonth() + 1);
+        }
+        renderCalendarView();
+    });
+
+    toggleViewButton.addEventListener('click', () => {
+        currentView = (currentView === 'week') ? 'month' : 'week';
+        if (currentView === 'month') {
+             // When switching to month view, set month based on current week view start date
+            currentMonthDate = new Date(currentStartDate);
+            currentMonthDate.setDate(1);
+        } else {
+            // When switching back to week view, maybe start from today or first of current month?
+             currentStartDate = new Date(); // Reset to today
+             currentStartDate.setHours(0, 0, 0, 0);
+        }
+        renderCalendarView();
     });
 
     closeButton.addEventListener('click', closeNoteModal);
@@ -662,5 +733,5 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     // --- End Event Listeners ---
 
-    renderBothCalendars(); // Initial render of both calendars
+    renderCalendarView(); // Initial render of combined view
 }); 
