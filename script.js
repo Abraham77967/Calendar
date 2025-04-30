@@ -15,7 +15,19 @@ firebase.initializeApp(firebaseConfig);
 // Initialize Firestore
 const db = firebase.firestore();
 
+// Function to completely clear all calendar data
+function clearAllCalendarData() {
+    // Clear localStorage
+    localStorage.removeItem('calendarNotes');
+    
+    // Ensure notes variable is empty when defined
+    return {};
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+    // Start with empty data - important!
+    let notes = clearAllCalendarData();
+    
     // Check for redirect result first
     firebase.auth().getRedirectResult().then((result) => {
         if (result.user) {
@@ -58,7 +70,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let currentStartDate = new Date(2025, 3, 1); // Start with April 2025 (Month is 0-indexed)
     let selectedDateString = null;
-    let notes = JSON.parse(localStorage.getItem('calendarNotes')) || {};
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -100,6 +111,8 @@ document.addEventListener('DOMContentLoaded', () => {
         firebase.auth().signOut()
             .then(() => {
                 console.log('User signed out successfully');
+                // Force a complete page reload to ensure clean state
+                window.location.reload(true);
             })
             .catch((error) => {
                 console.error('Sign out error:', error);
@@ -121,33 +134,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 .then(doc => {
                     console.log('Firestore response:', doc.exists ? 'Document exists' : 'No document found');
                     if (doc.exists && doc.data().notes) {
-                        // Merge cloud data with any local data
-                        const cloudNotes = doc.data().notes;
+                        // Use cloud data only when signed in
+                        notes = doc.data().notes;
                         console.log('Loaded notes from cloud');
-                        
-                        // If there's new local data not yet synced, merge it
-                        if (Object.keys(notes).length > 0) {
-                            const mergedNotes = {...cloudNotes, ...notes};
-                            notes = mergedNotes;
-                            // Save the merged data back to the cloud
-                            db.collection('userNotes').doc(user.uid).set({
-                                notes: mergedNotes
-                            });
-                            console.log('Merged local and cloud notes');
-                        } else {
-                            notes = cloudNotes;
-                            console.log('Using cloud notes only');
-                        }
-                        localStorage.setItem('calendarNotes', JSON.stringify(notes));
                         renderBothCalendars();
-                    } else if (Object.keys(notes).length > 0) {
-                        // First time login with existing local data - save to cloud
-                        console.log('First login with local data - saving to cloud');
-                        db.collection('userNotes').doc(user.uid).set({
-                            notes: notes
-                        });
                     } else {
-                        console.log('No existing notes found locally or in cloud');
+                        // No cloud data, start with empty notes
+                        notes = {};
+                        console.log('No existing notes found in cloud, starting fresh');
+                        renderBothCalendars();
                     }
                 })
                 .catch(error => {
@@ -155,10 +150,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     alert("Error fetching your calendar data: " + error.message);
                 });
         } else {
-            // User is signed out - use local storage only
-            console.log('No user logged in - using local storage only');
+            // User is signed out - aggressively clear all data
+            console.log('No user logged in - clearing all data');
             loginForm.style.display = 'block';
             userInfo.style.display = 'none';
+            
+            // Clear all calendar data completely
+            notes = clearAllCalendarData();
+            console.log('All calendar data cleared');
+            
+            // Re-render with empty data
+            renderBothCalendars();
         }
     });
     
@@ -185,6 +187,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Refactored Rendering Function ---
     function renderCalendar(targetDate, gridElement, monthYearElement) {
+        // Safety check - don't display notes if not logged in
+        if (!firebase.auth().currentUser) {
+            notes = clearAllCalendarData();
+        }
+        
         // Clear previous grid except headers
         while (gridElement.children.length > 7) {
             gridElement.removeChild(gridElement.lastChild);
@@ -226,7 +233,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Display note text, time, and time difference if note exists
             const noteData = notes[dateString];
-            if (noteData && noteData.text) {
+            if (firebase.auth().currentUser && noteData && noteData.text) {
                 const noteTextElement = document.createElement('div');
                 noteTextElement.classList.add('note-text');
                 let displayText = noteData.text;
@@ -251,6 +258,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- NEW: Render Event Progress Panel ---
     function renderEventProgressPanel() {
+        // Skip rendering if not logged in
+        if (!firebase.auth().currentUser) {
+            // Clear panel except title
+            const existingItems = eventProgressPanel.querySelectorAll('.progress-item');
+            existingItems.forEach(item => item.remove());
+            return;
+        }
+        
         // Clear existing panel content except the H3 title
         const existingItems = eventProgressPanel.querySelectorAll('.progress-item');
         existingItems.forEach(item => item.remove());
@@ -337,8 +352,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 checkbox.addEventListener('change', () => {
                     // Update the underlying data
                     notes[dateString].checklist[index].done = checkbox.checked;
-                    // Save to local storage
-                    localStorage.setItem('calendarNotes', JSON.stringify(notes));
+                    
+                    // Save to Firebase if user is logged in
+                    const user = firebase.auth().currentUser;
+                    if (user) {
+                        db.collection('userNotes').doc(user.uid).set({
+                            notes: notes
+                        })
+                        .catch(error => {
+                            console.error("Error updating checklist:", error);
+                        });
+                    }
+                    
                     // Toggle the completed class on the label
                     label.classList.toggle('completed', checkbox.checked);
                     // Update progress bar and summary
@@ -385,6 +410,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Function to Render Both Calendars ---
     function renderBothCalendars() {
+        // Check if user is signed in - if not, ensure notes is empty
+        if (!firebase.auth().currentUser) {
+            // Aggressively clear notes to ensure nothing is displayed when logged out
+            notes = clearAllCalendarData();
+            console.log('Cleared calendar data before rendering (not logged in)');
+        }
+        
         const firstMonthDate = new Date(currentStartDate);
         const secondMonthDate = new Date(currentStartDate);
         secondMonthDate.setMonth(secondMonthDate.getMonth() + 1);
@@ -405,6 +437,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Modal Functions (open, close - unchanged, save, delete - updated selector) ---
     function openNoteModal(dateString) {
+        // Don't allow adding notes if not signed in
+        if (!firebase.auth().currentUser) {
+            alert("Please sign in to add or view notes");
+            return;
+        }
+        
         selectedDateString = dateString;
         const [year, month, day] = dateString.split('-');
         const dateObj = new Date(year, month - 1, day);
@@ -511,6 +549,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // UPDATED: Save note including checklist data and syncing to Firebase
     function saveNote() {
+        // Don't save if not signed in
+        if (!firebase.auth().currentUser) {
+            alert("Please sign in to save notes");
+            closeNoteModal();
+            return;
+        }
+        
         if (selectedDateString) {
             const noteText = noteInputElement.value.trim();
             const noteTime = noteTimeElement.value;
@@ -531,9 +576,6 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 delete notes[selectedDateString]; // Delete only if everything is empty
             }
-
-            // Save to local storage
-            localStorage.setItem('calendarNotes', JSON.stringify(notes));
             
             // Save to Firebase if user is logged in
             const user = firebase.auth().currentUser;
@@ -558,11 +600,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // UPDATED: Delete note (also removes checklist) and syncs with Firebase
     function deleteNote() {
+        // Don't delete if not signed in
+        if (!firebase.auth().currentUser) {
+            alert("Please sign in to delete notes");
+            closeNoteModal();
+            return;
+        }
+        
         if (selectedDateString) {
             delete notes[selectedDateString];
-            
-            // Save to local storage
-            localStorage.setItem('calendarNotes', JSON.stringify(notes));
             
             // Save to Firebase if user is logged in
             const user = firebase.auth().currentUser;
