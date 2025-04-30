@@ -1,4 +1,33 @@
+// Firebase configuration - REPLACE WITH YOUR OWN CONFIG from Firebase console
+// Go to your Firebase project > Project Settings > Add Web App > Copy the config object
+const firebaseConfig = {
+    apiKey: "AIzaSyCOgSFssUQohtp7znEfq3mb2bmTH-00p4c",
+    authDomain: "calendar-7f322.firebaseapp.com",
+    projectId: "calendar-7f322",
+    storageBucket: "calendar-7f322.firebasestorage.app",
+    messagingSenderId: "127539488630",
+    appId: "1:127539488630:web:5c60fb6e5417d12bd37c57"
+};
+
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+
+// Initialize Firestore
+const db = firebase.firestore();
+
 document.addEventListener('DOMContentLoaded', () => {
+    // Check for redirect result first
+    firebase.auth().getRedirectResult().then((result) => {
+        if (result.user) {
+            console.log('Google sign in successful via redirect:', result.user.email);
+        }
+    }).catch((error) => {
+        console.error('Redirect sign-in error:', error);
+        if (error.code !== 'auth/null-user') {
+            alert(`Sign in failed: ${error.message}`);
+        }
+    });
+    
     // Get references for BOTH calendars and shared controls
     const monthYearDisplayElement = document.getElementById('month-year-display');
     const calendarGrid1 = document.getElementById('calendar-grid-1');
@@ -19,12 +48,121 @@ document.addEventListener('DOMContentLoaded', () => {
     const newItemInputElement = document.getElementById('new-checklist-item');
     const addItemButton = document.getElementById('add-item-button');
     const eventProgressPanel = document.getElementById('event-progress-panel'); // Get panel element
+    
+    // Authentication elements
+    const loginForm = document.getElementById('login-form');
+    const userInfo = document.getElementById('user-info');
+    const userEmail = document.getElementById('user-email');
+    const googleSignInButton = document.getElementById('google-signin-button');
+    const logoutButton = document.getElementById('logout-button');
 
     let currentStartDate = new Date(2025, 3, 1); // Start with April 2025 (Month is 0-indexed)
     let selectedDateString = null;
     let notes = JSON.parse(localStorage.getItem('calendarNotes')) || {};
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+
+    // --- Firebase Authentication Logic ---
+    
+    // Google Sign-in
+    googleSignInButton.addEventListener('click', () => {
+        console.log('Starting Google sign in process');
+        const provider = new firebase.auth.GoogleAuthProvider();
+        
+        // Add scopes if needed
+        provider.addScope('https://www.googleapis.com/auth/contacts.readonly');
+        
+        // Set custom parameters
+        provider.setCustomParameters({
+            'login_hint': 'user@example.com',
+            'prompt': 'select_account'
+        });
+        
+        firebase.auth().signInWithPopup(provider)
+            .then((result) => {
+                console.log('Google sign in successful:', result.user.email);
+            })
+            .catch((error) => {
+                console.error('Google sign in error:', error);
+                
+                // Try redirect method if popup fails
+                if (error.code === 'auth/popup-blocked' || error.code === 'auth/popup-closed-by-user') {
+                    console.log('Popup was blocked or closed, trying redirect method');
+                    firebase.auth().signInWithRedirect(provider);
+                } else {
+                    alert(`Sign in failed: ${error.message}`);
+                }
+            });
+    });
+    
+    // Logout event
+    logoutButton.addEventListener('click', () => {
+        firebase.auth().signOut()
+            .then(() => {
+                console.log('User signed out successfully');
+            })
+            .catch((error) => {
+                console.error('Sign out error:', error);
+            });
+    });
+    
+    // Check authentication state
+    firebase.auth().onAuthStateChanged(user => {
+        if (user) {
+            // User is signed in
+            console.log('User detected:', user.email);
+            loginForm.style.display = 'none';
+            userInfo.style.display = 'block';
+            userEmail.textContent = user.email;
+            
+            // Fetch notes from Firestore
+            console.log('Fetching notes for user:', user.uid);
+            db.collection('userNotes').doc(user.uid).get()
+                .then(doc => {
+                    console.log('Firestore response:', doc.exists ? 'Document exists' : 'No document found');
+                    if (doc.exists && doc.data().notes) {
+                        // Merge cloud data with any local data
+                        const cloudNotes = doc.data().notes;
+                        console.log('Loaded notes from cloud');
+                        
+                        // If there's new local data not yet synced, merge it
+                        if (Object.keys(notes).length > 0) {
+                            const mergedNotes = {...cloudNotes, ...notes};
+                            notes = mergedNotes;
+                            // Save the merged data back to the cloud
+                            db.collection('userNotes').doc(user.uid).set({
+                                notes: mergedNotes
+                            });
+                            console.log('Merged local and cloud notes');
+                        } else {
+                            notes = cloudNotes;
+                            console.log('Using cloud notes only');
+                        }
+                        localStorage.setItem('calendarNotes', JSON.stringify(notes));
+                        renderBothCalendars();
+                    } else if (Object.keys(notes).length > 0) {
+                        // First time login with existing local data - save to cloud
+                        console.log('First login with local data - saving to cloud');
+                        db.collection('userNotes').doc(user.uid).set({
+                            notes: notes
+                        });
+                    } else {
+                        console.log('No existing notes found locally or in cloud');
+                    }
+                })
+                .catch(error => {
+                    console.error("Error fetching notes:", error);
+                    alert("Error fetching your calendar data: " + error.message);
+                });
+        } else {
+            // User is signed out - use local storage only
+            console.log('No user logged in - using local storage only');
+            loginForm.style.display = 'block';
+            userInfo.style.display = 'none';
+        }
+    });
+    
+    // --- End Firebase Authentication Logic ---
 
     // --- Helper Function: Format Time Difference ---
     function formatTimeDifference(date1, date2) {
@@ -371,7 +509,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Note: Actual deletion from data happens on Save Note
     }
 
-    // UPDATED: Save note including checklist data
+    // UPDATED: Save note including checklist data and syncing to Firebase
     function saveNote() {
         if (selectedDateString) {
             const noteText = noteInputElement.value.trim();
@@ -394,17 +532,54 @@ document.addEventListener('DOMContentLoaded', () => {
                 delete notes[selectedDateString]; // Delete only if everything is empty
             }
 
+            // Save to local storage
             localStorage.setItem('calendarNotes', JSON.stringify(notes));
+            
+            // Save to Firebase if user is logged in
+            const user = firebase.auth().currentUser;
+            if (user) {
+                console.log('Saving note to Firestore for user:', user.uid);
+                db.collection('userNotes').doc(user.uid).set({
+                    notes: notes
+                })
+                .then(() => {
+                    console.log('Note saved successfully to Firestore');
+                })
+                .catch(error => {
+                    console.error("Error saving notes:", error);
+                    alert("Error saving to cloud: " + error.message);
+                });
+            }
+            
             closeNoteModal();
             renderBothCalendars(); // Re-render to show changes immediately
         }
     }
 
-    // UPDATED: Delete note (also removes checklist)
-     function deleteNote() {
+    // UPDATED: Delete note (also removes checklist) and syncs with Firebase
+    function deleteNote() {
         if (selectedDateString) {
             delete notes[selectedDateString];
+            
+            // Save to local storage
             localStorage.setItem('calendarNotes', JSON.stringify(notes));
+            
+            // Save to Firebase if user is logged in
+            const user = firebase.auth().currentUser;
+            if (user) {
+                console.log('Deleting note from Firestore for user:', user.uid);
+                db.collection('userNotes').doc(user.uid).set({
+                    notes: notes
+                })
+                .then(() => {
+                    console.log('Note deleted successfully from Firestore');
+                })
+                .catch(error => {
+                    console.error("Error deleting note:", error);
+                    alert("Error syncing deletion to cloud: " + error.message);
+                });
+            }
+            
             closeNoteModal();
             renderBothCalendars(); // Re-render to remove the note visually
         }
