@@ -97,65 +97,46 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Modify the auth state change handler to hide loading screen
     firebase.auth().onAuthStateChanged(user => {
-        try {
-            if (user) {
-                // User is signed in
-                console.log('User detected:', user.email);
-                if (loginForm) loginForm.style.display = 'none';
-                if (userInfo) userInfo.style.display = 'block';
-                if (userEmail) userEmail.textContent = user.email;
-                
-                // Fetch notes from Firestore
-                console.log('Fetching notes for user:', user.uid);
-                db.collection('userNotes').doc(user.uid).get()
-                    .then(doc => {
-                        console.log('Firestore response:', doc.exists ? 'Document exists' : 'No document found');
-                        if (doc.exists && doc.data() && doc.data().notes) {
-                            notes = doc.data().notes;
-                            console.log('Loaded notes from cloud');
-                        } else {
-                            notes = {};
-                            console.log('No existing notes found in cloud, starting fresh');
-                        }
-                        try {
-                            renderCalendarView();
-                        } catch (renderError) {
-                            console.error("Error rendering calendar view:", renderError);
-                        }
-                        hideLoadingScreen(); // Hide loading screen after rendering
-                    })
-                    .catch(error => {
-                        console.error("Error fetching notes:", error);
+        if (user) {
+            // User is signed in
+            console.log('User detected:', user.email);
+            loginForm.style.display = 'none';
+            userInfo.style.display = 'block';
+            userEmail.textContent = user.email;
+            
+            // Fetch notes from Firestore
+            console.log('Fetching notes for user:', user.uid);
+            db.collection('userNotes').doc(user.uid).get()
+                .then(doc => {
+                    console.log('Firestore response:', doc.exists ? 'Document exists' : 'No document found');
+                    if (doc.exists && doc.data().notes) {
+                        notes = doc.data().notes;
+                        console.log('Loaded notes from cloud');
+                    } else {
                         notes = {};
-                        try {
-                            renderCalendarView();
-                        } catch (renderError) {
-                            console.error("Error rendering calendar view after fetch error:", renderError);
-                        }
-                        hideLoadingScreen(); // Hide loading screen even on error
-                        // Show a gentler error message
-                        alert("There was a problem loading your calendar data. Please try refreshing the page.");
-                    });
-            } else {
-                // User is signed out
-                console.log('No user logged in - clearing all data');
-                if (loginForm) loginForm.style.display = 'block';
-                if (userInfo) userInfo.style.display = 'none';
-                
-                notes = clearAllCalendarData();
-                console.log('All calendar data cleared');
-                
-                try {
+                        console.log('No existing notes found in cloud, starting fresh');
+                    }
                     renderCalendarView();
-                } catch (renderError) {
-                    console.error("Error rendering calendar view for signed out user:", renderError);
-                }
-                hideLoadingScreen(); // Hide loading screen for signed out users
-            }
-        } catch (error) {
-            console.error("Critical error in auth state handler:", error);
-            hideLoadingScreen(); // Always hide loading screen even on critical errors
-            alert("There was a problem with the application. Please try refreshing the page.");
+                    hideLoadingScreen(); // Hide loading screen after rendering
+                })
+                .catch(error => {
+                    console.error("Error fetching notes:", error);
+                    alert("Error fetching your calendar data: " + error.message);
+                    notes = {};
+                    renderCalendarView();
+                    hideLoadingScreen(); // Hide loading screen even on error
+                });
+        } else {
+            // User is signed out
+            console.log('No user logged in - clearing all data');
+            loginForm.style.display = 'block';
+            userInfo.style.display = 'none';
+            
+            notes = clearAllCalendarData();
+            console.log('All calendar data cleared');
+            
+            renderCalendarView();
+            hideLoadingScreen(); // Hide loading screen for signed out users
         }
     });
 
@@ -260,156 +241,112 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Renders the mobile month view (uses renderCalendar)
     function renderMobileMonthView() {
-        try {
-            if (!calendarGrid1 || !monthYearElement1 || !monthYearDisplayElement) {
-                console.error("Required elements for mobile month view not found");
-                return;
-            }
-            
-            renderCalendar(mobileMonthDate, calendarGrid1, monthYearElement1);
-            // Update the main control header for mobile month view
-            monthYearDisplayElement.textContent = mobileMonthDate.toLocaleString('default', { month: 'long', year: 'numeric' });
-        } catch (error) {
-            console.error("Error in renderMobileMonthView:", error);
-        }
+        renderCalendar(mobileMonthDate, calendarGrid1, monthYearElement1);
+        // Update the main control header for mobile month view
+        monthYearDisplayElement.textContent = mobileMonthDate.toLocaleString('default', { month: 'long', year: 'numeric' });
     }
 
     // Renders the mobile two-week view
     function renderMobileTwoWeekView() {
-        try {
-            if (!calendarGrid1 || !monthYearElement1 || !monthYearDisplayElement) {
-                console.error("Required elements for mobile two-week view not found");
-                return;
-            }
+        if (!firebase.auth().currentUser) {
+            notes = clearAllCalendarData();
+        }
+        
+        // Clear previous grid days
+        while (calendarGrid1.children.length > 7) {
+            calendarGrid1.removeChild(calendarGrid1.lastChild);
+        }
+
+        const startDate = new Date(mobileWeekStartDate);
+        const endDate = new Date(startDate);
+        endDate.setDate(startDate.getDate() + 13);
+
+        // Update header display (use monthYearElement1 for the single calendar header)
+        const options = { month: 'short', day: 'numeric' };
+        monthYearElement1.textContent = `${startDate.toLocaleDateString('default', options)} - ${endDate.toLocaleDateString('default', options)}, ${startDate.getFullYear()}`;
+        monthYearDisplayElement.textContent = `${startDate.toLocaleDateString('default', { month: 'long', year: 'numeric' })}`; // Update top control header
+
+        for (let i = 0; i < 14; i++) {
+            const dayElement = document.createElement('div');
+            const currentDate = new Date(startDate);
+            currentDate.setDate(startDate.getDate() + i);
+            currentDate.setHours(0, 0, 0, 0);
+
+            // Add both day and week-view classes
+            dayElement.classList.add('day', 'week-view');
+            const dateString = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`;
+            dayElement.dataset.date = dateString;
+
+            const dayNameElement = document.createElement('div');
+            dayNameElement.classList.add('day-name');
+            const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            dayNameElement.textContent = dayNames[currentDate.getDay()];
+            dayElement.appendChild(dayNameElement);
             
-            if (!firebase.auth().currentUser) {
-                notes = clearAllCalendarData();
-            }
+            const dayNumberElement = document.createElement('div');
+            dayNumberElement.classList.add('day-number');
+            dayNumberElement.textContent = currentDate.getDate();
+            dayElement.appendChild(dayNumberElement);
             
-            // Clear previous grid days
-            while (calendarGrid1.children.length > 7) {
-                calendarGrid1.removeChild(calendarGrid1.lastChild);
+            if (currentDate.getTime() === today.getTime()) {
+                dayElement.classList.add('today');
             }
 
-            const startDate = new Date(mobileWeekStartDate);
-            const endDate = new Date(startDate);
-            endDate.setDate(startDate.getDate() + 13);
-
-            // Update header display (use monthYearElement1 for the single calendar header)
-            const options = { month: 'short', day: 'numeric' };
-            monthYearElement1.textContent = `${startDate.toLocaleDateString('default', options)} - ${endDate.toLocaleDateString('default', options)}, ${startDate.getFullYear()}`;
-            monthYearDisplayElement.textContent = `${startDate.toLocaleDateString('default', { month: 'long', year: 'numeric' })}`; // Update top control header
-
-            for (let i = 0; i < 14; i++) {
-                const dayElement = document.createElement('div');
-                const currentDate = new Date(startDate);
-                currentDate.setDate(startDate.getDate() + i);
-                currentDate.setHours(0, 0, 0, 0);
-
-                // Add both day and week-view classes
-                dayElement.classList.add('day', 'week-view');
-                const dateString = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`;
-                dayElement.dataset.date = dateString;
-
-                const dayNameElement = document.createElement('div');
-                dayNameElement.classList.add('day-name');
-                const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-                dayNameElement.textContent = dayNames[currentDate.getDay()];
-                dayElement.appendChild(dayNameElement);
-                
-                const dayNumberElement = document.createElement('div');
-                dayNumberElement.classList.add('day-number');
-                dayNumberElement.textContent = currentDate.getDate();
-                dayElement.appendChild(dayNumberElement);
-                
-                if (currentDate.getTime() === today.getTime()) {
-                    dayElement.classList.add('today');
-                }
-
-                const noteData = notes[dateString];
-                if (firebase.auth().currentUser && noteData && (noteData.text || (noteData.checklist && noteData.checklist.length > 0))) { 
-                    const noteTextElement = document.createElement('div');
-                    noteTextElement.classList.add('note-text');
-                    let displayText = noteData.text || '(Checklist)';
-                    if (noteData.time) displayText = `${noteData.time} - ${displayText}`;
-                    noteTextElement.textContent = displayText;
-                    dayElement.appendChild(noteTextElement);
-                }
-
-                dayElement.addEventListener('click', () => openNoteModal(dateString));
-                calendarGrid1.appendChild(dayElement);
+            const noteData = notes[dateString];
+            if (firebase.auth().currentUser && noteData && (noteData.text || (noteData.checklist && noteData.checklist.length > 0))) { 
+                const noteTextElement = document.createElement('div');
+                noteTextElement.classList.add('note-text');
+                let displayText = noteData.text || '(Checklist)';
+                if (noteData.time) displayText = `${noteData.time} - ${displayText}`;
+                noteTextElement.textContent = displayText;
+                dayElement.appendChild(noteTextElement);
             }
-        } catch (error) {
-            console.error("Error in renderMobileTwoWeekView:", error);
+
+            dayElement.addEventListener('click', () => openNoteModal(dateString));
+            calendarGrid1.appendChild(dayElement);
         }
     }
 
     // --- Combined Render Function (Checks screen size) ---
     function renderCalendarView() {
-        try {
-            const isDesktop = window.innerWidth > 1200;
-            
-            // Safety check for required elements
-            if (!calendar2Container || !toggleViewButton) {
-                console.error("Calendar container or toggle button not found");
-                return;
+        const isDesktop = window.innerWidth > 1200;
+        
+        // Show/Hide second calendar and toggle button based on screen size
+        calendar2Container.style.display = isDesktop ? 'block' : 'none';
+        toggleViewButton.style.display = isDesktop ? 'none' : 'inline-block'; // Hide toggle on desktop
+        
+        if (isDesktop) {
+            renderDesktopView();
+        } else { // Mobile view
+            if (currentView === 'week') {
+                renderMobileTwoWeekView();
+                toggleViewButton.textContent = 'Month View';
+            } else {
+                renderMobileMonthView();
+                toggleViewButton.textContent = 'Week View';
             }
-            
-            // Show/Hide second calendar and toggle button based on screen size
-            calendar2Container.style.display = isDesktop ? 'block' : 'none';
-            toggleViewButton.style.display = isDesktop ? 'none' : 'inline-block'; // Hide toggle on desktop
-            
-            if (isDesktop) {
-                renderDesktopView();
-            } else { // Mobile view
-                if (currentView === 'week') {
-                    renderMobileTwoWeekView();
-                    toggleViewButton.textContent = 'Month View';
-                } else {
-                    renderMobileMonthView();
-                    toggleViewButton.textContent = 'Week View';
-                }
-            }
-            
-            // Safely render progress panel
-            try {
-                renderEventProgressPanel();
-            } catch (panelError) {
-                console.error("Error rendering progress panel:", panelError);
-            }
-        } catch (error) {
-            console.error("Error in renderCalendarView:", error);
-            // Don't re-throw the error to prevent breaking the app
         }
+        // Always render progress panel
+        renderEventProgressPanel();
     }
 
     // --- Event Progress Panel Rendering ---
     function renderEventProgressPanel() {
-        // Safety check to ensure panel exists
-        if (!eventProgressPanel) {
-            console.error("Event progress panel element not found");
-            return;
-        }
-
         // Skip rendering if not logged in
         if (!firebase.auth().currentUser) {
             // Clear panel except title
             const existingItems = eventProgressPanel.querySelectorAll('.progress-item');
-            if (existingItems) {
-                existingItems.forEach(item => item.remove());
-            }
+            existingItems.forEach(item => item.remove());
             return;
         }
         
         // Clear existing panel content except the H3 title
         const existingItems = eventProgressPanel.querySelectorAll('.progress-item');
-        if (existingItems) {
-            existingItems.forEach(item => item.remove());
-        }
+        existingItems.forEach(item => item.remove());
 
         // Get all notes with checklists and sort them by date
         const notesWithChecklists = Object.entries(notes)
-            .filter(([dateString, noteData]) => noteData && noteData.checklist && noteData.checklist.length > 0)
+            .filter(([dateString, noteData]) => noteData.checklist && noteData.checklist.length > 0)
             .map(([dateString, noteData]) => ({ dateString, ...noteData }))
             .sort((a, b) => new Date(a.dateString) - new Date(b.dateString));
 
@@ -806,94 +743,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Add resize listener
     window.addEventListener('resize', renderCalendarView);
-
-    // Authorization button event listeners
-    googleSignInButton.addEventListener('click', () => {
-        console.log('Starting Google sign in process');
-        const provider = new firebase.auth.GoogleAuthProvider();
-        
-        // Add scopes if needed
-        provider.addScope('https://www.googleapis.com/auth/contacts.readonly');
-        
-        // Set custom parameters
-        provider.setCustomParameters({
-            'login_hint': 'user@example.com',
-            'prompt': 'select_account'
-        });
-        
-        firebase.auth().signInWithPopup(provider)
-            .then((result) => {
-                console.log('Google sign in successful:', result.user.email);
-            })
-            .catch((error) => {
-                console.error('Google sign in error:', error);
-                
-                // Try redirect method if popup fails
-                if (error.code === 'auth/popup-blocked' || error.code === 'auth/popup-closed-by-user') {
-                    console.log('Popup was blocked or closed, trying redirect method');
-                    firebase.auth().signInWithRedirect(provider);
-                } else {
-                    alert(`Sign in failed: ${error.message}`);
-                }
-            });
-    });
-    
-    // Fix the logout event handling
-    if (logoutButton) {
-        logoutButton.addEventListener('click', () => {
-            console.log('Logout button clicked');
-            
-            // First hide any open modals
-            if (noteModal) {
-                noteModal.style.display = 'none';
-            }
-            
-            // Then sign out from Firebase
-            firebase.auth().signOut()
-                .then(() => {
-                    console.log('User signed out successfully');
-                    
-                    // Clear data
-                    notes = clearAllCalendarData();
-                    
-                    // Reset to default view
-                    currentView = 'week';
-                    mobileWeekStartDate = new Date();
-                    mobileWeekStartDate.setHours(0, 0, 0, 0);
-                    desktopMonthDate = new Date();
-                    desktopMonthDate.setDate(1);
-                    
-                    // Show loading screen briefly during transition
-                    const loadingScreen = document.getElementById('loading-screen');
-                    if (loadingScreen) {
-                        loadingScreen.classList.remove('loading-hidden');
-                        loadingScreen.style.display = 'flex';
-                    }
-                    
-                    // Manually update UI rather than reload
-                    setTimeout(() => {
-                        try {
-                            // Hide user info, show login
-                            if (loginForm) loginForm.style.display = 'block';
-                            if (userInfo) userInfo.style.display = 'none';
-                            
-                            // Re-render with empty state
-                            renderCalendarView();
-                            
-                            // Hide loading again
-                            hideLoadingScreen();
-                        } catch (error) {
-                            console.error("Error during signout UI update:", error);
-                            window.location.reload(); // Last resort
-                        }
-                    }, 300);
-                })
-                .catch((error) => {
-                    console.error('Sign out error:', error);
-                    alert('Error signing out: ' + error.message);
-                });
-        });
-    }
 
     // Initial Render
     renderCalendarView();
