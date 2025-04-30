@@ -42,11 +42,14 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Get references for calendar and shared controls
     const monthYearDisplayElement = document.getElementById('month-year-display'); // Top control header
-    const dateRangeDisplayElement = document.getElementById('date-range-display'); // Calendar header
-    const calendarGrid = document.getElementById('calendar-grid-main');
+    const calendarGrid1 = document.getElementById('calendar-grid-1');
+    const monthYearElement1 = document.getElementById('month-year-1');
+    const calendarGrid2 = document.getElementById('calendar-grid-2'); // Added back
+    const monthYearElement2 = document.getElementById('month-year-2'); // Added back
+    const calendar2Container = document.getElementById('calendar-2'); // Container for hiding
     
-    const prevWeekButton = document.getElementById('prev-month'); // Re-purpose button
-    const nextWeekButton = document.getElementById('next-month'); // Re-purpose button
+    const prevButton = document.getElementById('prev-month'); // Use generic name
+    const nextButton = document.getElementById('next-month'); // Use generic name
     
     const noteModal = document.getElementById('note-modal');
     const modalDateElement = document.getElementById('modal-date');
@@ -66,13 +69,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const userEmail = document.getElementById('user-email');
     const googleSignInButton = document.getElementById('google-signin-button');
     const logoutButton = document.getElementById('logout-button');
-    const toggleViewButton = document.getElementById('toggle-view-button'); // Get toggle button
+    const toggleViewButton = document.getElementById('toggle-view-button');
 
-    let currentView = 'week'; // 'week' or 'month'
-    let currentMonthDate = new Date(); // For month view navigation
-    currentMonthDate.setDate(1); // Start at the 1st of the month
-    let currentStartDate = new Date(); // Start from today for week view
-    currentStartDate.setHours(0, 0, 0, 0);
+    let currentView = 'week'; // Mobile view state: 'week' or 'month'
+    let desktopMonthDate = new Date(); // For desktop two-month navigation
+    desktopMonthDate.setDate(1);
+    let mobileMonthDate = new Date(); // For mobile month view navigation
+    mobileMonthDate.setDate(1);
+    let mobileWeekStartDate = new Date(); // For mobile week view navigation
+    mobileWeekStartDate.setHours(0, 0, 0, 0);
     let selectedDateString = null;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -152,6 +157,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 .catch(error => {
                     console.error("Error fetching notes:", error);
                     alert("Error fetching your calendar data: " + error.message);
+                    notes = {}; // Reset on error
+                    renderCalendarView(); // Render empty view on error
                 });
         } else {
             // User is signed out - aggressively clear all data
@@ -189,57 +196,42 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     // --- End Helper Function ---
 
-    // --- Combined Render Function ---
-    function renderCalendarView() {
-        if (currentView === 'week') {
-            renderTwoWeekView();
-            toggleViewButton.textContent = 'Month View';
-        } else {
-            renderMonthView();
-            toggleViewButton.textContent = 'Week View';
-        }
-        // Always render progress panel
-        renderEventProgressPanel();
-    }
+    // --- Rendering Functions ---
 
-    // --- NEW: Render Month View ---
-    function renderMonthView() {
+    // Renders a single month into a specific grid/header element
+    function renderCalendar(targetDate, gridElement, monthYearElement) {
+         // Safety check
         if (!firebase.auth().currentUser) {
-            notes = clearAllCalendarData();
+            notes = clearAllCalendarData(); // Ensure notes are clear if somehow called when logged out
         }
-
+        
         // Clear previous grid days
-        while (calendarGrid.children.length > 7) {
-            calendarGrid.removeChild(calendarGrid.lastChild);
+        while (gridElement.children.length > 7) {
+            gridElement.removeChild(gridElement.lastChild);
         }
 
-        const year = currentMonthDate.getFullYear();
-        const month = currentMonthDate.getMonth(); // 0-indexed
+        const year = targetDate.getFullYear();
+        const month = targetDate.getMonth();
 
-        // Update header display
-        const monthName = currentMonthDate.toLocaleString('default', { month: 'long' });
-        dateRangeDisplayElement.textContent = `${monthName} ${year}`;
-        monthYearDisplayElement.textContent = `${monthName} ${year}`; // Update top control header too
+        monthYearElement.textContent = `${targetDate.toLocaleString('default', { month: 'long' })} ${year}`;
 
-        const firstDayOfMonth = new Date(year, month, 1).getDay(); // 0 = Sunday, 1 = Monday, ...
+        const firstDayOfMonth = new Date(year, month, 1).getDay();
         const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-        // Add empty divs for days before the 1st
+        // Add empty prefix days
         for (let i = 0; i < firstDayOfMonth; i++) {
             const emptyDiv = document.createElement('div');
             emptyDiv.classList.add('day', 'other-month');
-            calendarGrid.appendChild(emptyDiv);
+            gridElement.appendChild(emptyDiv);
         }
 
-        // Add days of the month
+        // Add actual days
         for (let day = 1; day <= daysInMonth; day++) {
             const dayElement = document.createElement('div');
             const currentDate = new Date(year, month, day);
             currentDate.setHours(0, 0, 0, 0);
 
             dayElement.classList.add('day');
-            // Use slightly smaller class for month view days if needed
-            // dayElement.classList.add('day-month-view'); 
             const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
             dayElement.dataset.date = dateString;
 
@@ -248,12 +240,10 @@ document.addEventListener('DOMContentLoaded', () => {
             dayNumber.textContent = day;
             dayElement.appendChild(dayNumber);
 
-            // Check if this day is today
             if (currentDate.getTime() === today.getTime()) {
                 dayElement.classList.add('today');
             }
 
-            // Display note text
             const noteData = notes[dateString];
             if (firebase.auth().currentUser && noteData && (noteData.text || (noteData.checklist && noteData.checklist.length > 0))) {
                 const noteTextElement = document.createElement('div');
@@ -265,31 +255,53 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             dayElement.addEventListener('click', () => openNoteModal(dateString));
-            calendarGrid.appendChild(dayElement);
+            gridElement.appendChild(dayElement);
         }
     }
-    // --- End Render Month View ---
 
-    // --- Render Two Week View (Minor change to call progress panel) ---
-    function renderTwoWeekView() {
+    // Renders two adjacent months for desktop
+    function renderDesktopView() {
+        const firstMonthDate = new Date(desktopMonthDate);
+        const secondMonthDate = new Date(desktopMonthDate);
+        secondMonthDate.setMonth(secondMonthDate.getMonth() + 1);
+
+        renderCalendar(firstMonthDate, calendarGrid1, monthYearElement1);
+        renderCalendar(secondMonthDate, calendarGrid2, monthYearElement2);
+
+        // Update the main control header for desktop view
+        const month1Name = firstMonthDate.toLocaleString('default', { month: 'long' });
+        const month2Name = secondMonthDate.toLocaleString('default', { month: 'long' });
+        const year1 = firstMonthDate.getFullYear();
+        const year2 = secondMonthDate.getFullYear();
+        monthYearDisplayElement.textContent = year1 === year2 ? `${month1Name} & ${month2Name} ${year1}` : `${month1Name} ${year1} & ${month2Name} ${year2}`;
+    }
+    
+    // Renders the mobile month view (uses renderCalendar)
+    function renderMobileMonthView() {
+        renderCalendar(mobileMonthDate, calendarGrid1, monthYearElement1);
+        // Update the main control header for mobile month view
+        monthYearDisplayElement.textContent = mobileMonthDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+    }
+
+    // Renders the mobile two-week view
+    function renderMobileTwoWeekView() {
         if (!firebase.auth().currentUser) {
             notes = clearAllCalendarData();
         }
         
         // Clear previous grid days
-        while (calendarGrid.children.length > 7) {
-            calendarGrid.removeChild(calendarGrid.lastChild);
+        while (calendarGrid1.children.length > 7) {
+            calendarGrid1.removeChild(calendarGrid1.lastChild);
         }
 
-        const startDate = new Date(currentStartDate);
+        const startDate = new Date(mobileWeekStartDate);
         const endDate = new Date(startDate);
         endDate.setDate(startDate.getDate() + 13);
 
-        // Update header display
+        // Update header display (use monthYearElement1 for the single calendar header)
         const options = { month: 'short', day: 'numeric' };
-        const displayOptions = { month: 'long', year: 'numeric' };
-        dateRangeDisplayElement.textContent = `${startDate.toLocaleDateString('default', options)} - ${endDate.toLocaleDateString('default', options)}, ${startDate.getFullYear()}`;
-        monthYearDisplayElement.textContent = `${startDate.toLocaleDateString('default', displayOptions)}`; 
+        monthYearElement1.textContent = `${startDate.toLocaleDateString('default', options)} - ${endDate.toLocaleDateString('default', options)}, ${startDate.getFullYear()}`;
+        monthYearDisplayElement.textContent = `${startDate.toLocaleDateString('default', { month: 'long', year: 'numeric' })}`; // Update top control header
 
         for (let i = 0; i < 14; i++) {
             const dayElement = document.createElement('div');
@@ -297,20 +309,22 @@ document.addEventListener('DOMContentLoaded', () => {
             currentDate.setDate(startDate.getDate() + i);
             currentDate.setHours(0, 0, 0, 0);
 
-            dayElement.classList.add('day');
+            // Add both day and week-view classes
+            dayElement.classList.add('day', 'week-view');
             const dateString = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`;
             dayElement.dataset.date = dateString;
 
-            const dayNumber = document.createElement('span');
-            dayNumber.classList.add('day-number');
-            dayNumber.textContent = currentDate.getDate();
-            dayElement.appendChild(dayNumber);
+            const dayNameElement = document.createElement('div');
+            dayNameElement.classList.add('day-name');
+            const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            dayNameElement.textContent = dayNames[currentDate.getDay()];
+            dayElement.appendChild(dayNameElement);
             
-            const dayName = document.createElement('span');
-            dayName.classList.add('day-name');
-            dayName.textContent = currentDate.toLocaleDateString('default', { weekday: 'short' });
-            dayElement.appendChild(dayName);
-
+            const dayNumberElement = document.createElement('div');
+            dayNumberElement.classList.add('day-number');
+            dayNumberElement.textContent = currentDate.getDate();
+            dayElement.appendChild(dayNumberElement);
+            
             if (currentDate.getTime() === today.getTime()) {
                 dayElement.classList.add('today');
             }
@@ -326,11 +340,32 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             dayElement.addEventListener('click', () => openNoteModal(dateString));
-            calendarGrid.appendChild(dayElement);
+            calendarGrid1.appendChild(dayElement);
         }
-        // Note: renderEventProgressPanel is now called by renderCalendarView
     }
-    // --- End Render Two Week View ---
+
+    // --- Combined Render Function (Checks screen size) ---
+    function renderCalendarView() {
+        const isDesktop = window.innerWidth > 1200;
+        
+        // Show/Hide second calendar and toggle button based on screen size
+        calendar2Container.style.display = isDesktop ? 'block' : 'none';
+        toggleViewButton.style.display = isDesktop ? 'none' : 'inline-block'; // Hide toggle on desktop
+        
+        if (isDesktop) {
+            renderDesktopView();
+        } else { // Mobile view
+            if (currentView === 'week') {
+                renderMobileTwoWeekView();
+                toggleViewButton.textContent = 'Month View';
+            } else {
+                renderMobileMonthView();
+                toggleViewButton.textContent = 'Week View';
+            }
+        }
+        // Always render progress panel
+        renderEventProgressPanel();
+    }
 
     // --- Event Progress Panel Rendering ---
     function renderEventProgressPanel() {
@@ -682,36 +717,47 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- End Modal Functions ---
 
     // --- Event Listeners ---
-    prevWeekButton.addEventListener('click', () => {
-        if (currentView === 'week') {
-            currentStartDate.setDate(currentStartDate.getDate() - 7);
+    prevButton.addEventListener('click', () => {
+        const isDesktop = window.innerWidth > 1200;
+        if (isDesktop) {
+            desktopMonthDate.setMonth(desktopMonthDate.getMonth() - 1);
         } else {
-            currentMonthDate.setMonth(currentMonthDate.getMonth() - 1);
+            if (currentView === 'week') {
+                mobileWeekStartDate.setDate(mobileWeekStartDate.getDate() - 7);
+            } else {
+                mobileMonthDate.setMonth(mobileMonthDate.getMonth() - 1);
+            }
         }
         renderCalendarView();
     });
 
-    nextWeekButton.addEventListener('click', () => {
-        if (currentView === 'week') {
-            currentStartDate.setDate(currentStartDate.getDate() + 7);
+    nextButton.addEventListener('click', () => {
+        const isDesktop = window.innerWidth > 1200;
+        if (isDesktop) {
+            desktopMonthDate.setMonth(desktopMonthDate.getMonth() + 1);
         } else {
-            currentMonthDate.setMonth(currentMonthDate.getMonth() + 1);
+             if (currentView === 'week') {
+                mobileWeekStartDate.setDate(mobileWeekStartDate.getDate() + 7);
+            } else {
+                mobileMonthDate.setMonth(mobileMonthDate.getMonth() + 1);
+            }
         }
         renderCalendarView();
     });
 
+    // Toggle view only affects mobile
     toggleViewButton.addEventListener('click', () => {
         currentView = (currentView === 'week') ? 'month' : 'week';
         if (currentView === 'month') {
              // When switching to month view, set month based on current week view start date
-            currentMonthDate = new Date(currentStartDate);
-            currentMonthDate.setDate(1);
+            mobileMonthDate = new Date(mobileWeekStartDate);
+            mobileMonthDate.setDate(1);
         } else {
-            // When switching back to week view, maybe start from today or first of current month?
-             currentStartDate = new Date(); // Reset to today
-             currentStartDate.setHours(0, 0, 0, 0);
+            // When switching back to week view, reset to today
+             mobileWeekStartDate = new Date(); 
+             mobileWeekStartDate.setHours(0, 0, 0, 0);
         }
-        renderCalendarView();
+        renderCalendarView(); // Re-render mobile view
     });
 
     closeButton.addEventListener('click', closeNoteModal);
@@ -731,7 +777,10 @@ document.addEventListener('DOMContentLoaded', () => {
             closeNoteModal();
         }
     });
-    // --- End Event Listeners ---
 
-    renderCalendarView(); // Initial render of combined view
+    // Add resize listener
+    window.addEventListener('resize', renderCalendarView);
+
+    // Initial Render
+    renderCalendarView();
 }); 

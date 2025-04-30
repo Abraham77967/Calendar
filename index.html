@@ -32,14 +32,12 @@
 
         <div class="content-area">
             <div class="calendars-wrapper">
-                <!-- Only one calendar container needed -->
-                <div class="calendar-container" id="calendar-main">
+                <!-- First Calendar -->
+                <div class="calendar-container" id="calendar-1">
                     <div class="calendar-header">
-                        <!-- Header will be updated by JS to show date range -->
-                        <h3 id="date-range-display">Date Range</h3>
+                        <h3 id="month-year-1">Month 1</h3>
                     </div>
-                    <div class="calendar-grid" id="calendar-grid-main">
-                        <!-- Day headers will be added dynamically by JS if needed, or kept simple -->
+                    <div class="calendar-grid" id="calendar-grid-1">
                         <div class="day-header">Sun</div>
                         <div class="day-header">Mon</div>
                         <div class="day-header">Tue</div>
@@ -47,7 +45,21 @@
                         <div class="day-header">Thu</div>
                         <div class="day-header">Fri</div>
                         <div class="day-header">Sat</div>
-                        <!-- Calendar days will be populated here -->
+                    </div>
+                </div>
+                <!-- Second Calendar (for desktop) -->
+                <div class="calendar-container" id="calendar-2">
+                    <div class="calendar-header">
+                        <h3 id="month-year-2">Month 2</h3>
+                    </div>
+                    <div class="calendar-grid" id="calendar-grid-2">
+                        <div class="day-header">Sun</div>
+                        <div class="day-header">Mon</div>
+                        <div class="day-header">Tue</div>
+                        <div class="day-header">Wed</div>
+                        <div class="day-header">Thu</div>
+                        <div class="day-header">Fri</div>
+                        <div class="day-header">Sat</div>
                     </div>
                 </div>
             </div>
