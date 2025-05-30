@@ -485,7 +485,12 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderMainGoals() {
         goalsContainer.innerHTML = '';
         if (mainGoals.length === 0) {
-            goalsContainer.innerHTML = '<p class="no-goals-message">No items set yet. Click "Edit List" to add some!</p>';
+            goalsContainer.innerHTML = `
+                <p class="no-goals-message">
+                    <span class="placeholder-emoji">✏️</span> Add tasks like "Finish Math HW" or "Prepare for photo shoot."
+                    <br><br>
+                    <small>Click "Edit List" to get started!</small>
+                </p>`;
             return;
         }
         mainGoals.forEach((goal, index) => {
@@ -979,16 +984,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Renders the single month view 
     function renderMonthView() {
         renderCalendar(currentMonthDate, calendarGrid1, monthYearElement1);
-
-        // Update month selector
-        const monthSelectElement = document.getElementById('month-select');
-        const yearDisplay = document.getElementById('year-display');
         
-        if (monthSelectElement) {
-            monthSelectElement.value = currentMonthDate.getMonth();
-        }
-        if (yearDisplay) {
-            yearDisplay.textContent = currentMonthDate.getFullYear();
+        // Update month-year display directly without relying on the removed select element
+        const monthYearElement = document.getElementById('month-year-1');
+        if (monthYearElement) {
+            const options = { year: 'numeric', month: 'long' };
+            monthYearElement.textContent = currentMonthDate.toLocaleDateString('en-US', options);
         }
     }
 
@@ -1051,10 +1052,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Handle month selection from dropdown
-    const monthSelect = document.getElementById('month-select');
-    if (monthSelect) {
-        monthSelect.addEventListener('change', () => {
-            const selectedMonth = parseInt(monthSelect.value);
+    if (document.getElementById('month-select')) {
+        const monthSelectElement = document.getElementById('month-select');
+        monthSelectElement.addEventListener('change', () => {
+            const selectedMonth = parseInt(monthSelectElement.value);
             const yearDisplay = document.getElementById('year-display');
             const year = yearDisplay ? parseInt(yearDisplay.textContent) : currentMonthDate.getFullYear();
             
@@ -1065,13 +1066,15 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Update month select when calendar changes
+    // Update month/year display
     function updateMonthSelect() {
-        const monthSelect = document.getElementById('month-select');
-        const yearDisplay = document.getElementById('year-display');
-        
-        if (monthSelect) monthSelect.value = currentMonthDate.getMonth();
-        if (yearDisplay) yearDisplay.textContent = currentMonthDate.getFullYear();
+        // This function now only needs to update the month-year-1 display
+        // since we removed the month selector dropdown
+        const monthYearElement = document.getElementById('month-year-1');
+        if (monthYearElement) {
+            const options = { year: 'numeric', month: 'long' };
+            monthYearElement.textContent = currentMonthDate.toLocaleDateString('en-US', options);
+        }
     }
 
     // --- Event Progress Panel for Multiple Events ---
@@ -1092,7 +1095,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (datesWithEvents.length === 0) {
             const noEventsMessage = document.createElement('div');
             noEventsMessage.classList.add('no-events-message-panel');
-            noEventsMessage.textContent = 'No events with checklists. Add some events to see them here!';
+            noEventsMessage.innerHTML = `
+                <p>No tasks to track yet!</p>
+                <p class="subtext">Add checklists to events to see your progress here.</p>
+            `;
             progressItemsContainer.appendChild(noEventsMessage);
             return;
         }
@@ -1130,7 +1136,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (eventsWithChecklists.length === 0) {
             const noEventsMessage = document.createElement('div');
             noEventsMessage.classList.add('no-events-message-panel');
-            noEventsMessage.textContent = 'No upcoming events with checklists. Add some checklists to your events!';
+            noEventsMessage.innerHTML = `
+                <p>No tasks to track yet!</p>
+                <p class="subtext">Add checklists to your events by clicking on a calendar date.</p>
+            `;
             progressItemsContainer.appendChild(noEventsMessage);
             return;
         }
@@ -1265,7 +1274,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (checklistContainer.style.display === 'none' || !checklistContainer.style.display) {
                             checklistContainer.style.display = 'block';
                             e.target.textContent = 'Hide Tasks';
-                        } else {
+            } else {
                             checklistContainer.style.display = 'none';
                             e.target.textContent = 'Show Tasks';
                         }
@@ -2183,10 +2192,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Handle month selection from dropdown
-    const monthSelect = document.getElementById('month-select');
-    if (monthSelect) {
-        monthSelect.addEventListener('change', () => {
-            const selectedMonth = parseInt(monthSelect.value);
+    if (document.getElementById('month-select')) {
+        const monthSelectElement = document.getElementById('month-select');
+        monthSelectElement.addEventListener('change', () => {
+            const selectedMonth = parseInt(monthSelectElement.value);
             const yearDisplay = document.getElementById('year-display');
             const year = yearDisplay ? parseInt(yearDisplay.textContent) : currentMonthDate.getFullYear();
             
@@ -2197,13 +2206,15 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Update month select when calendar changes
+    // Update month/year display
     function updateMonthSelect() {
-        const monthSelect = document.getElementById('month-select');
-        const yearDisplay = document.getElementById('year-display');
-        
-        if (monthSelect) monthSelect.value = currentMonthDate.getMonth();
-        if (yearDisplay) yearDisplay.textContent = currentMonthDate.getFullYear();
+        // This function now only needs to update the month-year-1 display
+        // since we removed the month selector dropdown
+        const monthYearElement = document.getElementById('month-year-1');
+        if (monthYearElement) {
+            const options = { year: 'numeric', month: 'long' };
+            monthYearElement.textContent = currentMonthDate.toLocaleDateString('en-US', options);
+        }
     }
 
     // --- Event Progress Panel for Multiple Events ---
@@ -2224,7 +2235,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (datesWithEvents.length === 0) {
             const noEventsMessage = document.createElement('div');
             noEventsMessage.classList.add('no-events-message-panel');
-            noEventsMessage.textContent = 'No events with checklists. Add some events to see them here!';
+            noEventsMessage.innerHTML = `
+                <p>No tasks to track yet!</p>
+                <p class="subtext">Add checklists to events to see your progress here.</p>
+            `;
             progressItemsContainer.appendChild(noEventsMessage);
             return;
         }
@@ -2262,7 +2276,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (eventsWithChecklists.length === 0) {
             const noEventsMessage = document.createElement('div');
             noEventsMessage.classList.add('no-events-message-panel');
-            noEventsMessage.textContent = 'No upcoming events with checklists. Add some checklists to your events!';
+            noEventsMessage.innerHTML = `
+                <p>No tasks to track yet!</p>
+                <p class="subtext">Add checklists to your events by clicking on a calendar date.</p>
+            `;
             progressItemsContainer.appendChild(noEventsMessage);
             return;
         }
@@ -2548,3 +2565,193 @@ document.addEventListener('DOMContentLoaded', () => {
     
     console.log('[DEADLINES] Deadline displays refreshed');
 } 
+
+    // --- Fix Button Event Listeners ---
+
+    // Make sure Edit Goals button works
+    if (editGoalsButton) {
+        editGoalsButton.addEventListener('click', openGoalsModal);
+        console.log('[INIT] Added event listener to Edit Goals button');
+    }
+
+    if (goalsCloseButton) {
+        goalsCloseButton.addEventListener('click', closeGoalsModal);
+        console.log('[INIT] Added event listener to Goals Close button');
+    }
+
+    if (saveGoalsButton) {
+        saveGoalsButton.addEventListener('click', saveMainGoals);
+        console.log('[INIT] Added event listener to Save Goals button');
+    }
+
+    // Fix news tab functionality
+    initializeNewsTabs();
+    fetchNews();
+
+    // Add checklist event listeners
+    addItemButton.addEventListener('click', addNewEventChecklistItem);
+    editAddItemButton.addEventListener('click', addEditEventChecklistItem);
+
+    // Add event buttons
+    addEventButton.addEventListener('click', addEvent);
+    saveEditedEventButton.addEventListener('click', saveEditedEvent);
+    cancelEditButton.addEventListener('click', hideEditEventSection);
+    deleteEventButton.addEventListener('click', handleDeleteEvent);
+
+    // Modal close button
+    noteCloseButton.addEventListener('click', closeNoteModal);
+
+    // Fix task filtering
+    if (taskSearchInput) {
+        taskSearchInput.addEventListener('input', filterTasks);
+    }
+
+    // Goal tabs
+    if (selectTasksTab) {
+        selectTasksTab.addEventListener('click', () => {
+            selectTasksTab.classList.add('active');
+            customGoalsTab.classList.remove('active');
+            selectTasksContainer.style.display = 'block';
+            customGoalsContainer.style.display = 'none';
+        });
+    }
+
+    if (customGoalsTab) {
+        customGoalsTab.addEventListener('click', () => {
+            customGoalsTab.classList.add('active');
+            selectTasksTab.classList.remove('active');
+            customGoalsContainer.style.display = 'block';
+            selectTasksContainer.style.display = 'none';
+        });
+    }
+
+    // Render initial view
+    renderCalendarView();
+    renderMainGoals();
+    renderEventProgressPanel();
+
+    // --- Weather Widget Functionality ---
+    function initializeWeatherWidget() {
+        const requestLocationButton = document.getElementById('request-location-button');
+        const weatherLocation = document.getElementById('weather-location');
+        const weatherTemp = document.getElementById('weather-temp');
+        const weatherCondition = document.getElementById('weather-condition');
+        const weatherHumidity = document.getElementById('weather-humidity');
+        const weatherWind = document.getElementById('weather-wind');
+        const weatherIcon = document.getElementById('weather-icon-img');
+        const weatherDate = document.getElementById('weather-date');
+        
+        // Set current date in weather widget
+        const today = new Date();
+        weatherDate.textContent = today.toLocaleDateString('en-US', { 
+            weekday: 'short', 
+            month: 'short', 
+            day: 'numeric' 
+        });
+        
+        // Function to get weather data
+        function fetchWeatherData(latitude, longitude) {
+            // Use OpenWeatherMap API for weather data
+            const apiKey = 'bd5e378503939ddaee76f12ad7a97608'; // Free API key, usage limits apply
+            const apiUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&units=imperial&appid=${apiKey}`;
+            
+            fetch(apiUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Weather API error: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('[WEATHER] API response:', data);
+                    
+                    // Update weather widget with data
+                    weatherLocation.textContent = data.name;
+                    weatherTemp.textContent = Math.round(data.main.temp);
+                    weatherCondition.textContent = data.weather[0].main;
+                    weatherHumidity.textContent = data.main.humidity;
+                    weatherWind.textContent = Math.round(data.wind.speed);
+                    
+                    // Set weather icon
+                    const iconCode = data.weather[0].icon;
+                    weatherIcon.src = `https://openweathermap.org/img/wn/${iconCode}@2x.png`;
+                    
+                    // Hide the request button once we have weather data
+                    requestLocationButton.style.display = 'none';
+                })
+                .catch(error => {
+                    console.error('[WEATHER] Error fetching weather:', error);
+                    weatherCondition.textContent = 'Weather data unavailable';
+                    weatherLocation.textContent = 'Error loading weather data';
+                    
+                    // Keep the button visible on error
+                    requestLocationButton.style.display = 'block';
+                });
+        }
+        
+        // Function to request location and get weather
+        function requestLocationAndWeather() {
+            if (navigator.geolocation) {
+                weatherCondition.textContent = 'Requesting location...';
+                
+                navigator.geolocation.getCurrentPosition(
+                    // Success callback
+                    (position) => {
+                        const { latitude, longitude } = position.coords;
+                        console.log(`[WEATHER] Location obtained: ${latitude}, ${longitude}`);
+                        fetchWeatherData(latitude, longitude);
+                    },
+                    // Error callback
+                    (error) => {
+                        console.error('[WEATHER] Geolocation error:', error);
+                        
+                        let errorMessage = 'Location access denied';
+                        if (error.code === error.PERMISSION_DENIED) {
+                            errorMessage = 'Location permission denied. Please enable in settings.';
+                        } else if (error.code === error.POSITION_UNAVAILABLE) {
+                            errorMessage = 'Location information unavailable.';
+                        } else if (error.code === error.TIMEOUT) {
+                            errorMessage = 'Location request timed out.';
+                        }
+                        
+                        weatherCondition.textContent = 'Cannot access location';
+                        weatherLocation.textContent = errorMessage;
+                        
+                        // Keep button visible
+                        requestLocationButton.style.display = 'block';
+                    },
+                    // Options
+                    { 
+                        maximumAge: 600000, // Cache location for 10 minutes
+                        timeout: 10000,     // 10 second timeout
+                        enableHighAccuracy: false // No need for high accuracy
+                    }
+                );
+            } else {
+                // Browser doesn't support geolocation
+                weatherCondition.textContent = 'Geolocation not supported';
+                weatherLocation.textContent = 'Please use a different browser';
+            }
+        }
+        
+        // Add click handler to request button
+        if (requestLocationButton) {
+            requestLocationButton.addEventListener('click', requestLocationAndWeather);
+        }
+        
+        // Try to get weather automatically on page load (will only work if user previously granted permission)
+        requestLocationAndWeather();
+    }
+
+    // Add this to the event listeners section
+    // ... existing code ...
+        // Fix news tab functionality
+        initializeNewsTabs();
+        fetchNews();
+        
+        // Initialize weather widget
+        initializeWeatherWidget();
+        
+        // Add checklist event listeners
+    // ... existing code ...
+});

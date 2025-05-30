@@ -45,19 +45,25 @@
                             Loading...
                         </div>
                         <div class="weather-location" id="weather-location">
-                            Please allow location access
                         </div>
                     </div>
                 </div>
+                <button id="request-location-button" class="location-request-button">
+                    Request Location Access
+                </button>
                 <div class="weather-footer">
                     <div class="weather-extra">
                         <div class="weather-item">
                             <span class="weather-label">Humidity</span>
-                            <span id="weather-humidity">--</span>%
+                            <div class="weather-value">
+                                <span id="weather-humidity">--</span>%
+                            </div>
                         </div>
                         <div class="weather-item">
                             <span class="weather-label">Wind</span>
-                            <span id="weather-wind">--</span> mph
+                            <div class="weather-value">
+                                <span id="weather-wind">--</span> mph
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -115,7 +121,7 @@
             </div>
 
             <div id="event-progress-panel">
-                <h3>Checklist Progress</h3>
+                <h3>Task Progress</h3>
                 <div id="progress-items-container">
                     <!-- Progress items will be added here dynamically -->
                 </div>

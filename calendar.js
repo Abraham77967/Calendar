@@ -7,8 +7,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const nextButton = document.getElementById('next-month');
     const toggleViewButton = document.getElementById('toggle-view-button');
     const todayButton = document.getElementById('today-button');
-    const monthSelect = document.getElementById('month-select');
-    const yearDisplay = document.getElementById('year-display');
     
     // Create fresh date objects for the current date
     const currentDate = new Date();
@@ -55,7 +53,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const month = targetDate.getMonth();
         
         // Update header with month and year
-        headerElement.textContent = `${targetDate.toLocaleString('default', { month: 'long' })} ${year}`;
+        const options = { year: 'numeric', month: 'long' };
+        headerElement.textContent = targetDate.toLocaleDateString('en-US', options);
         
         const firstDayOfMonth = new Date(year, month, 1);
         const firstDayIndex = firstDayOfMonth.getDay(); // 0-6 (Sun-Sat)
@@ -242,14 +241,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Renders month view (single calendar)
     function renderMonthView() {
         renderCalendar(currentMonthDate, calendarGrid1, monthYearElement1);
-        
-        // Update month selector dropdown
-        if (monthSelect) {
-            monthSelect.value = currentMonthDate.getMonth();
-        }
-        if (yearDisplay) {
-            yearDisplay.textContent = currentMonthDate.getFullYear();
-        }
     }
     
     // Main render function - decides which view to show
@@ -332,18 +323,6 @@ document.addEventListener('DOMContentLoaded', function() {
     if (todayButton) {
         todayButton.addEventListener('click', () => {
             window.forceCalendarReset = true;
-            renderCalendarView();
-        });
-    }
-    
-    // Month selector dropdown
-    if (monthSelect) {
-        monthSelect.addEventListener('change', () => {
-            const selectedMonth = parseInt(monthSelect.value);
-            const year = yearDisplay ? parseInt(yearDisplay.textContent) : currentMonthDate.getFullYear();
-            
-            currentMonthDate = new Date(year, selectedMonth, 1);
-            currentMonthDate.setHours(0, 0, 0, 0);
             renderCalendarView();
         });
     }

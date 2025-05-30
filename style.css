@@ -3416,50 +3416,37 @@ button::after {
 
 /* Location request button styles */
 .location-request-button {
-    background: rgba(41, 44, 109, 0.1);
+    background: linear-gradient(135deg, rgba(41, 44, 109, 0.1) 0%, rgba(41, 44, 109, 0.2) 100%);
     border: 1px solid rgba(41, 44, 109, 0.2);
     color: #292C6D;
-    font-size: 0.8rem;
-    padding: 5px 10px;
+    font-size: 0.9rem;
+    padding: 10px 20px;
     border-radius: 20px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 10px auto 0;
+    margin: 0 auto 15px;
     transition: all 0.3s ease;
     font-family: 'Quicksand', sans-serif;
     font-weight: 600;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
 }
 
 .location-request-button span {
-    margin-right: 5px;
-    font-size: 1rem;
+    margin-right: 8px;
+    font-size: 1.1rem;
 }
 
 .location-request-button:hover {
-    background: rgba(41, 44, 109, 0.2);
-    transform: translateY(-1px);
-    box-shadow: 0 3px 7px rgba(0, 0, 0, 0.15);
+    background: linear-gradient(135deg, rgba(41, 44, 109, 0.2) 0%, rgba(41, 44, 109, 0.3) 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 12px rgba(0, 0, 0, 0.15);
 }
 
 .location-request-button:active {
     transform: translateY(1px);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.weather-content {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 15px;
-    position: relative;
-    background: rgba(255, 255, 255, 0.4);
-    border-radius: 15px;
-    border: 1px solid rgba(41, 44, 109, 0.1);
-    box-shadow: 0 5px 15px rgba(22, 24, 83, 0.08);
-    margin-bottom: 15px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
 .weather-icon {
@@ -3511,8 +3498,9 @@ button::after {
     font-family: 'Nunito', sans-serif;
 }
 
+/* Remove the pin icon before weather location */
 .weather-location::before {
-    content: '📍';
+    content: '';
     margin-right: 5px;
     font-size: 0.9rem;
 }
@@ -3549,7 +3537,9 @@ button::after {
     font-family: 'Poppins', sans-serif;
 }
 
-.weather-item span:not(.weather-label) {
+.weather-item .weather-value {
+    display: flex;
+    align-items: center;
     font-size: 1.2rem;
     font-weight: 600;
     color: #292C6D;
@@ -4299,4 +4289,42 @@ button::after {
 
 .calendar-nav-btn:hover {
     animation: none;
+}
+
+.no-goals-message {
+    color: #777;
+    text-align: center;
+    padding: 20px;
+    background-color: rgba(255, 255, 255, 0.3);
+    border-radius: 12px;
+    font-size: 1rem;
+    line-height: 1.5;
+}
+
+.placeholder-emoji {
+    font-size: 1.5rem;
+    display: block;
+    margin-bottom: 10px;
+}
+
+.no-events-message-panel {
+    padding: 25px;
+    text-align: center;
+    color: #777;
+    background-color: rgba(255, 255, 255, 0.3);
+    border-radius: 12px;
+    margin: 10px 0;
+    font-family: 'Nunito', sans-serif;
+}
+
+.no-events-message-panel p {
+    margin: 0 0 10px;
+    font-size: 1.1rem;
+    font-weight: 500;
+}
+
+.no-events-message-panel .subtext {
+    font-size: 0.9rem;
+    color: #999;
+    font-style: italic;
 }
