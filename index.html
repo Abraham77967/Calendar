@@ -9,7 +9,7 @@
 <body>
     <div class="main-container">
         <div class="calendar-controls">
-            <h2>Calendar Dashboard</h2>
+            <h2 id="month-year-display">April & May 2025</h2>
             <button id="toggle-view-button">Month View</button>
             
             <div class="header-auth">
@@ -45,24 +45,24 @@
                             Loading...
                         </div>
                         <div class="weather-location" id="weather-location">
+                            Please allow location access
                         </div>
                     </div>
                 </div>
-                <button id="request-location-button" class="location-request-button">
-                    Request Location Access
-                </button>
                 <div class="weather-footer">
                     <div class="weather-extra">
                         <div class="weather-item">
                             <span class="weather-label">Humidity</span>
                             <div class="weather-value">
-                                <span id="weather-humidity">--</span>%
+                                <span id="weather-humidity">--</span>
+                                <span class="weather-unit">%</span>
                             </div>
                         </div>
                         <div class="weather-item">
                             <span class="weather-label">Wind</span>
                             <div class="weather-value">
-                                <span id="weather-wind">--</span> mph
+                                <span id="weather-wind">--</span>
+                                <span class="weather-unit">mph</span>
                             </div>
                         </div>
                     </div>
@@ -101,14 +101,29 @@
             <div class="calendars-wrapper">
                 <div class="calendar-container" id="calendar-1">
                     <div class="calendar-header">
-                        <div class="calendar-nav">
-                            <button id="prev-month" class="calendar-nav-btn" title="Previous Month">&laquo; Prev</button>
-                            <button id="next-month" class="calendar-nav-btn" title="Next Month">Next &raquo;</button>
-                            <button id="today-button" class="today-button" title="Go to Today">Today</button>
+                        <div class="month-navigation">
+                            <button id="prev-month" class="month-nav-button">&laquo;</button>
+                            <h3 id="month-year-1">April 2025</h3>
+                            <button id="next-month" class="month-nav-button">&raquo;</button>
                         </div>
-                        <h3 id="month-year-1">April 2025</h3>
+                        <button id="today-button" class="today-button">Today</button>
                     </div>
                     <div class="calendar-grid" id="calendar-grid-1">
+                        <div class="day-header">Sun</div>
+                        <div class="day-header">Mon</div>
+                        <div class="day-header">Tue</div>
+                        <div class="day-header">Wed</div>
+                        <div class="day-header">Thu</div>
+                        <div class="day-header">Fri</div>
+                        <div class="day-header">Sat</div>
+                    </div>
+                </div>
+
+                <div class="calendar-container" id="calendar-2">
+                    <div class="calendar-header">
+                        <h3 id="month-year-2">May 2025</h3>
+                    </div>
+                    <div class="calendar-grid" id="calendar-grid-2">
                         <div class="day-header">Sun</div>
                         <div class="day-header">Mon</div>
                         <div class="day-header">Tue</div>
@@ -121,7 +136,7 @@
             </div>
 
             <div id="event-progress-panel">
-                <h3>Task Progress</h3>
+                <h3>Checklist Progress</h3>
                 <div id="progress-items-container">
                     <!-- Progress items will be added here dynamically -->
                 </div>
@@ -281,9 +296,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore-compat.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.5.0/axios.min.js"></script>
-    <!-- Calendar module with the new calendar design -->
-    <script src="calendar.js"></script>
     <script src="script.js"></script>
 </body>
 </html> 

@@ -251,12 +251,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     // Get references for calendar and shared controls
-    const monthYearElement1 = document.getElementById('month-year-1');
+    const monthYearDisplayElement = document.getElementById('month-year-display'); // Top control header
     const calendarGrid1 = document.getElementById('calendar-grid-1');
-    const toggleViewButton = document.getElementById('toggle-view-button');
+    const monthYearElement1 = document.getElementById('month-year-1');
+    const calendarGrid2 = document.getElementById('calendar-grid-2'); // Added back
+    const monthYearElement2 = document.getElementById('month-year-2'); // Added back
+    const calendar2Container = document.getElementById('calendar-2'); // Container for hiding
 
-    const prevButton = document.getElementById('prev-month'); 
-    const nextButton = document.getElementById('next-month'); 
+    const prevButton = document.getElementById('prev-month'); // Use generic name
+    const nextButton = document.getElementById('next-month'); // Use generic name
     
     const noteModal = document.getElementById('note-modal');
     const modalDateElement = document.getElementById('modal-date');
@@ -294,6 +297,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const userEmail = document.getElementById('user-email');
     const googleSignInButton = document.getElementById('google-signin-button');
     const logoutButton = document.getElementById('logout-button');
+    const toggleViewButton = document.getElementById('toggle-view-button');
 
     // Main Goals elements
     const goalsContainer = document.getElementById('goals-container');
@@ -332,10 +336,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // Reset time portions to zero for accurate date comparison
     currentDate.setHours(0, 0, 0, 0);
     
-    // Set up month view (start at first day of current month)
-    let currentMonthDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-    currentMonthDate.setHours(0, 0, 0, 0);
-    console.log('[INIT] Current month date:', currentMonthDate);
+    // Set up desktop month view (start at first day of current month)
+    let desktopMonthDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+    desktopMonthDate.setHours(0, 0, 0, 0);
+    console.log('[INIT] Desktop month date:', desktopMonthDate);
+    
+    // Set up mobile month view (start at first day of current month)
+    let mobileMonthDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+    mobileMonthDate.setHours(0, 0, 0, 0);
+    console.log('[INIT] Mobile month date:', mobileMonthDate);
     
     // Set up mobile week view (start at current date)
     let mobileWeekStartDate = new Date(currentDate);
@@ -485,12 +494,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderMainGoals() {
         goalsContainer.innerHTML = '';
         if (mainGoals.length === 0) {
-            goalsContainer.innerHTML = `
-                <p class="no-goals-message">
-                    <span class="placeholder-emoji">✏️</span> Add tasks like "Finish Math HW" or "Prepare for photo shoot."
-                    <br><br>
-                    <small>Click "Edit List" to get started!</small>
-                </p>`;
+            goalsContainer.innerHTML = '<p class="no-goals-message">No items set yet. Click "Edit List" to add some!</p>';
             return;
         }
         mainGoals.forEach((goal, index) => {
@@ -928,6 +932,9 @@ document.addEventListener('DOMContentLoaded', () => {
             dayCell.dataset.date = dateString;
             dayCell.dataset.dayNum = dayNum; // For easier debugging
 
+            // Visual Debug: Add a border to all cells initially
+            // dayCell.style.border = '1px dotted blue'; 
+
             const dayNumberElement = document.createElement('div');
             dayNumberElement.classList.add('day-number');
             dayNumberElement.textContent = dayNum;
@@ -937,6 +944,16 @@ document.addEventListener('DOMContentLoaded', () => {
             if (isToday) {
                 dayCell.classList.add('today');
                 console.log(`[NEW RENDER] Marked as TODAY: ${dateString}.`);
+                // ---- TEMPORARY DEV STYLES FOR TODAY - REMOVED ----
+                // dayCell.style.backgroundColor = 'lime';
+                // dayCell.style.border = '3px solid red';
+                // dayCell.style.color = 'black';
+                // dayCell.style.fontWeight = '900';
+                // dayCell.style.setProperty('outline', '3px dashed blue', 'important');
+                // dayCell.style.setProperty('z-index', '9999', 'important');
+                // dayCell.style.setProperty('opacity', '1', 'important');
+                // dayCell.style.setProperty('transform', 'scale(1.1)', 'important');
+                // ------------------------------------------
             }
 
             // --- Display Events --- 
@@ -971,111 +988,216 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log(`[NEW RENDER] Appended all day cells for ${month + 1}/${year}. Total children in grid: ${gridElement.children.length}`);
     }
 
-    // Renders two adjacent months for desktop
+    // Renders single month for desktop view (replacing two-month view)
     function renderDesktopView() {
-        renderMonthView();
+        const monthDate = new Date(desktopMonthDate);
+        
+        renderCalendar(monthDate, calendarGrid1, monthYearElement1);
+        
+        // Update the main control header for desktop view
+        const monthName = monthDate.toLocaleString('default', { month: 'long' });
+        const year = monthDate.getFullYear();
+        monthYearDisplayElement.textContent = `${monthName} ${year}`;
     }
     
     // Renders the mobile month view (uses renderCalendar)
     function renderMobileMonthView() {
-        renderMonthView();
+        renderCalendar(mobileMonthDate, calendarGrid1, monthYearElement1);
+        monthYearDisplayElement.textContent = mobileMonthDate.toLocaleString('default', { month: 'long', year: 'numeric' });
     }
 
-    // Renders the single month view 
-    function renderMonthView() {
-        renderCalendar(currentMonthDate, calendarGrid1, monthYearElement1);
-        
-        // Update month-year display directly without relying on the removed select element
-        const monthYearElement = document.getElementById('month-year-1');
-        if (monthYearElement) {
-            const options = { year: 'numeric', month: 'long' };
-            monthYearElement.textContent = currentMonthDate.toLocaleDateString('en-US', options);
+    // Renders the mobile two-week view with consistent today highlighting
+    function renderMobileTwoWeekView() {
+        console.log(`[NEW MOBILE RENDER] Starting renderMobileTwoWeekView`);
+        const globalNotes = window.calendarNotes;
+
+        const nowDate = new Date();
+        nowDate.setHours(0, 0, 0, 0);
+        const todayYear = nowDate.getFullYear();
+        const todayMonth = nowDate.getMonth();
+        const todayDay = nowDate.getDate();
+
+        calendarGrid1.innerHTML = ''; // Clear previous grid content VERY FIRST
+
+        const viewStartDate = new Date(mobileWeekStartDate);
+        viewStartDate.setHours(0, 0, 0, 0);
+
+        const viewEndDate = new Date(viewStartDate);
+        viewEndDate.setDate(viewStartDate.getDate() + 13); // 14 days total
+
+        const headerOptions = { month: 'short', day: 'numeric' };
+        monthYearElement1.textContent = `${viewStartDate.toLocaleDateString('default', headerOptions)} - ${viewEndDate.toLocaleDateString('default', headerOptions)}, ${viewStartDate.getFullYear()}`;
+        monthYearDisplayElement.textContent = `${viewStartDate.toLocaleDateString('default', { month: 'long', year: 'numeric' })}`;
+        console.log(`[NEW MOBILE RENDER] Rendering 2-week view from: ${viewStartDate.toDateString()} to ${viewEndDate.toDateString()}`);
+
+        const fragment = document.createDocumentFragment();
+
+        // Add day headers (Sun-Sat) for the first week shown in the two-week view for context
+        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        for (let i = 0; i < 7; i++) {
+            const dayHeader = document.createElement('div');
+            dayHeader.classList.add('day-header', 'mobile-week-header');
+            // We can set textContent to dayNames[ (viewStartDate.getDay() + i) % 7 ] if we want dynamic headers for the week view starting day
+            // For simplicity, or if the visual grid doesn't always start on Sunday for the *data* but visually *does* for the headers, we might just use fixed headers.
+            // Let's assume the visual grid header row is always Sun-Sat for this display.
+            dayHeader.textContent = dayNames[i];
+            fragment.appendChild(dayHeader);
         }
-    }
 
+        // Create and add all 14 day cells
+        for (let i = 0; i < 14; i++) {
+            const currentDateOfLoop = new Date(viewStartDate);
+            currentDateOfLoop.setDate(viewStartDate.getDate() + i);
+
+            const year = currentDateOfLoop.getFullYear();
+            const month = currentDateOfLoop.getMonth(); // 0-indexed
+            const dayNum = currentDateOfLoop.getDate();
+            const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+
+            const dayCell = document.createElement('div');
+            dayCell.classList.add('day', 'week-view'); // Ensure 'week-view' styles apply
+            dayCell.dataset.date = dateString;
+            dayCell.dataset.dayNum = dayNum;
+
+            const dayNameElement = document.createElement('div');
+            dayNameElement.classList.add('day-name');
+            dayNameElement.textContent = dayNames[currentDateOfLoop.getDay()];
+            dayCell.appendChild(dayNameElement);
+
+            const dayNumberElement = document.createElement('div');
+            dayNumberElement.classList.add('day-number');
+            dayNumberElement.textContent = dayNum;
+            dayCell.appendChild(dayNumberElement);
+
+            const isToday = (dayNum === todayDay && month === todayMonth && year === todayYear);
+            if (isToday) {
+                dayCell.classList.add('today');
+                console.log(`[NEW MOBILE RENDER] Marked as TODAY: ${dateString}.`);
+            }
+
+            // --- Display Events ---
+            const eventsForDay = globalNotes[dateString] || [];
+            const eventsContainer = document.createElement('div');
+            eventsContainer.classList.add('day-events');
+
+            if (eventsForDay.length === 1) {
+                const eventTextElement = document.createElement('div');
+                eventTextElement.classList.add('note-text', 'single-event');
+                let displayText = eventsForDay[0].text || '(No description)';
+                if (eventsForDay[0].time) displayText = `${eventsForDay[0].time} - ${displayText}`; 
+                // Truncate display text to prevent overflow
+                eventTextElement.textContent = truncateText(displayText, 20); // Shorter length for mobile
+                eventTextElement.title = displayText; // Show full text on hover
+                eventsContainer.appendChild(eventTextElement);
+            } else if (eventsForDay.length > 1) {
+                const eventCountElement = document.createElement('div');
+                eventCountElement.classList.add('note-text', 'event-count');
+                eventCountElement.textContent = `${eventsForDay.length} Events`;
+                eventsContainer.appendChild(eventCountElement);
+            }
+            dayCell.appendChild(eventsContainer);
+            // --- End Display Events ---
+
+            dayCell.addEventListener('click', () => openNoteModal(dateString));
+            fragment.appendChild(dayCell);
+        }
+
+        calendarGrid1.appendChild(fragment);
+        console.log(`[NEW MOBILE RENDER] Appended all 14 day cells. Total children in grid: ${calendarGrid1.children.length}`);
+    }
+    
+    // --- Combined Render Function (Checks screen size) ---
+    function renderCalendarView() {
+        console.log('[CALENDAR VIEW] Starting calendar render');
+        
+        // Force refresh of current date to ensure today highlighting works
+        const currentDate = new Date();
+        currentDate.setHours(0, 0, 0, 0);
+        console.log(`[CALENDAR VIEW] Current date: ${currentDate.toISOString()}`);
+        
+        // Reset to current month/week on first render or when explicitly requested
+        if (!window.calendarInitialized || window.forceCalendarReset) {
+            console.log('[CALENDAR VIEW] Initializing calendar to current date');
+            
+            // Set desktop view to current month
+            desktopMonthDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+            desktopMonthDate.setHours(0, 0, 0, 0);
+            
+            // Set mobile month view to current month
+            mobileMonthDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+            mobileMonthDate.setHours(0, 0, 0, 0);
+            
+            // Set mobile week view to include current date
+            // Start the week on Sunday before the current date
+            const dayOfWeek = currentDate.getDay();
+            mobileWeekStartDate = new Date(currentDate);
+            mobileWeekStartDate.setDate(currentDate.getDate() - dayOfWeek);
+            mobileWeekStartDate.setHours(0, 0, 0, 0);
+            
+            console.log(`[CALENDAR VIEW] Desktop month set to: ${desktopMonthDate.toISOString()}`);
+            console.log(`[CALENDAR VIEW] Mobile month set to: ${mobileMonthDate.toISOString()}`);
+            console.log(`[CALENDAR VIEW] Mobile week start set to: ${mobileWeekStartDate.toISOString()}`);
+            
+            // Mark as initialized and reset the force flag
+            window.calendarInitialized = true;
+            window.forceCalendarReset = false;
+        }
+        
+        const isDesktop = window.innerWidth > 1200;
+        
+        // Always hide second calendar since we're only showing one month
+        calendar2Container.style.display = 'none';
+        toggleViewButton.style.display = isDesktop ? 'none' : 'inline-block'; // Hide toggle on desktop
+        
+        if (isDesktop) {
+            console.log('[CALENDAR VIEW] Rendering desktop view (single month)');
+            renderDesktopView();
+        } else { // Mobile view
+            if (currentView === 'week') {
+                console.log('[CALENDAR VIEW] Rendering mobile week view');
+                renderMobileTwoWeekView();
+                toggleViewButton.textContent = 'Month View';
+            } else {
+                console.log('[CALENDAR VIEW] Rendering mobile month view');
+                renderMobileMonthView();
+                toggleViewButton.textContent = 'Week View';
+            }
+        }
+        
+        // Always render progress panel
+        renderEventProgressPanel();
+        
+        console.log('[CALENDAR VIEW] Calendar render complete');
+    }
+    
     // --- Event Listeners ---
     prevButton.addEventListener('click', () => {
-        currentMonthDate.setMonth(currentMonthDate.getMonth() - 1);
-        
-        if (currentView === 'week' && window.innerWidth <= 768) {
-            mobileWeekStartDate.setDate(mobileWeekStartDate.getDate() - 7);
+        const isDesktop = window.innerWidth > 1200;
+        if (isDesktop) {
+            desktopMonthDate.setMonth(desktopMonthDate.getMonth() - 1);
+        } else {
+            if (currentView === 'week') {
+                mobileWeekStartDate.setDate(mobileWeekStartDate.getDate() - 7);
+            } else {
+                mobileMonthDate.setMonth(mobileMonthDate.getMonth() - 1);
+            }
         }
         renderCalendarView();
     });
 
     nextButton.addEventListener('click', () => {
-        currentMonthDate.setMonth(currentMonthDate.getMonth() + 1);
-        
-        if (currentView === 'week' && window.innerWidth <= 768) {
-            mobileWeekStartDate.setDate(mobileWeekStartDate.getDate() + 7);
-        }
-        renderCalendarView();
-    });
-
-    // Toggle view only affects mobile
-    toggleViewButton.addEventListener('click', () => {
-        currentView = (currentView === 'week') ? 'month' : 'week';
-        if (currentView === 'month') {
-            // When switching to month view, set month based on current week view start date
-            currentMonthDate = new Date(mobileWeekStartDate);
-            currentMonthDate.setDate(1);
+        const isDesktop = window.innerWidth > 1200;
+        if (isDesktop) {
+            desktopMonthDate.setMonth(desktopMonthDate.getMonth() + 1);
         } else {
-            // When switching back to week view, reset to today
-            mobileWeekStartDate = new Date(); 
-            mobileWeekStartDate.setHours(0, 0, 0, 0);
+            if (currentView === 'week') {
+                mobileWeekStartDate.setDate(mobileWeekStartDate.getDate() + 7);
+            } else {
+                mobileMonthDate.setMonth(mobileMonthDate.getMonth() + 1);
+            }
         }
-        renderCalendarView(); // Re-render mobile view
-    });
-
-    // Add event listener for Today button
-    document.getElementById('today-button').addEventListener('click', () => {
-        console.log('[CALENDAR] Today button clicked');
-        
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        
-        // Reset calendar view to current month
-        currentMonthDate = new Date(today.getFullYear(), today.getMonth(), 1);
-        currentMonthDate.setHours(0, 0, 0, 0);
-        
-        // Set mobile week view to start on the Sunday before the current date
-        const dayOfWeek = today.getDay();
-        mobileWeekStartDate = new Date(today);
-        mobileWeekStartDate.setDate(today.getDate() - dayOfWeek);
-            mobileWeekStartDate.setHours(0, 0, 0, 0);
-            
-        // Force refresh with today highlighted
-        window.forceCalendarReset = true;
         renderCalendarView();
-        
-        console.log('[CALENDAR] Calendar reset to today');
     });
-
-    // Handle month selection from dropdown
-    if (document.getElementById('month-select')) {
-        const monthSelectElement = document.getElementById('month-select');
-        monthSelectElement.addEventListener('change', () => {
-            const selectedMonth = parseInt(monthSelectElement.value);
-            const yearDisplay = document.getElementById('year-display');
-            const year = yearDisplay ? parseInt(yearDisplay.textContent) : currentMonthDate.getFullYear();
-            
-            // Update month view
-            currentMonthDate = new Date(year, selectedMonth, 1);
-            currentMonthDate.setHours(0, 0, 0, 0);
-            renderCalendarView();
-        });
-    }
-
-    // Update month/year display
-    function updateMonthSelect() {
-        // This function now only needs to update the month-year-1 display
-        // since we removed the month selector dropdown
-        const monthYearElement = document.getElementById('month-year-1');
-        if (monthYearElement) {
-            const options = { year: 'numeric', month: 'long' };
-            monthYearElement.textContent = currentMonthDate.toLocaleDateString('en-US', options);
-        }
-    }
 
     // --- Event Progress Panel for Multiple Events ---
     function renderEventProgressPanel() {
@@ -1095,10 +1217,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (datesWithEvents.length === 0) {
             const noEventsMessage = document.createElement('div');
             noEventsMessage.classList.add('no-events-message-panel');
-            noEventsMessage.innerHTML = `
-                <p>No tasks to track yet!</p>
-                <p class="subtext">Add checklists to events to see your progress here.</p>
-            `;
+            noEventsMessage.textContent = 'No events with checklists. Add some events to see them here!';
             progressItemsContainer.appendChild(noEventsMessage);
             return;
         }
@@ -1136,10 +1255,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (eventsWithChecklists.length === 0) {
             const noEventsMessage = document.createElement('div');
             noEventsMessage.classList.add('no-events-message-panel');
-            noEventsMessage.innerHTML = `
-                <p>No tasks to track yet!</p>
-                <p class="subtext">Add checklists to your events by clicking on a calendar date.</p>
-            `;
+            noEventsMessage.textContent = 'No upcoming events with checklists. Add some checklists to your events!';
             progressItemsContainer.appendChild(noEventsMessage);
             return;
         }
@@ -1274,7 +1390,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (checklistContainer.style.display === 'none' || !checklistContainer.style.display) {
                             checklistContainer.style.display = 'block';
                             e.target.textContent = 'Hide Tasks';
-            } else {
+                        } else {
                             checklistContainer.style.display = 'none';
                             e.target.textContent = 'Show Tasks';
                         }
@@ -2135,19 +2251,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Event Listeners ---
     prevButton.addEventListener('click', () => {
-        currentMonthDate.setMonth(currentMonthDate.getMonth() - 1);
-        
-        if (currentView === 'week' && window.innerWidth <= 768) {
+        const isDesktop = window.innerWidth > 1200;
+        if (isDesktop) {
+            desktopMonthDate.setMonth(desktopMonthDate.getMonth() - 1);
+        } else {
+            if (currentView === 'week') {
                 mobileWeekStartDate.setDate(mobileWeekStartDate.getDate() - 7);
+            } else {
+                mobileMonthDate.setMonth(mobileMonthDate.getMonth() - 1);
+            }
         }
         renderCalendarView();
     });
 
     nextButton.addEventListener('click', () => {
-        currentMonthDate.setMonth(currentMonthDate.getMonth() + 1);
-        
-        if (currentView === 'week' && window.innerWidth <= 768) {
+        const isDesktop = window.innerWidth > 1200;
+        if (isDesktop) {
+            desktopMonthDate.setMonth(desktopMonthDate.getMonth() + 1);
+        } else {
+            if (currentView === 'week') {
                 mobileWeekStartDate.setDate(mobileWeekStartDate.getDate() + 7);
+            } else {
+                mobileMonthDate.setMonth(mobileMonthDate.getMonth() + 1);
+            }
         }
         renderCalendarView();
     });
@@ -2157,8 +2283,8 @@ document.addEventListener('DOMContentLoaded', () => {
         currentView = (currentView === 'week') ? 'month' : 'week';
         if (currentView === 'month') {
              // When switching to month view, set month based on current week view start date
-            currentMonthDate = new Date(mobileWeekStartDate);
-            currentMonthDate.setDate(1);
+            mobileMonthDate = new Date(mobileWeekStartDate);
+            mobileMonthDate.setDate(1);
         } else {
             // When switching back to week view, reset to today
              mobileWeekStartDate = new Date(); 
@@ -2167,6 +2293,179 @@ document.addEventListener('DOMContentLoaded', () => {
         renderCalendarView(); // Re-render mobile view
     });
 
+    // Modal event listeners
+    noteCloseButton.addEventListener('click', closeNoteModal);
+    
+    // Add new event
+    addEventButton.addEventListener('click', addEvent);
+    
+    // Add checklist item to new event
+    addItemButton.addEventListener('click', addNewEventChecklistItem);
+    newChecklistItemElement.addEventListener('keypress', (event) => {
+        if (event.key === 'Enter') {
+            addNewEventChecklistItem();
+        }
+    });
+    
+    // Add checklist item to edit event
+    editAddItemButton.addEventListener('click', addEditEventChecklistItem);
+    editChecklistItemElement.addEventListener('keypress', (event) => {
+        if (event.key === 'Enter') {
+            addEditEventChecklistItem();
+        }
+    });
+    
+    // Edit event actions
+    saveEditedEventButton.addEventListener('click', saveEditedEvent);
+    cancelEditButton.addEventListener('click', hideEditEventSection);
+    deleteEventButton.addEventListener('click', handleDeleteEvent);
+
+    // Close modal on outside click
+    window.addEventListener('click', (event) => {
+        if (event.target == noteModal) {
+            closeNoteModal();
+        }
+        if (event.target == goalsModal) {
+            closeGoalsModal();
+        }
+    });
+
+    // Main Goals event listeners
+    editGoalsButton.addEventListener('click', openGoalsModal);
+    goalsCloseButton.addEventListener('click', (event) => {
+        console.log('Goals close button clicked!', event.target);
+        closeGoalsModal();
+    });
+    saveGoalsButton.addEventListener('click', saveMainGoals);
+    
+    // Goals modal tab event listeners
+    selectTasksTab.addEventListener('click', () => {
+        selectTasksTab.classList.add('active');
+        customGoalsTab.classList.remove('active');
+        selectTasksContainer.style.display = 'block';
+        customGoalsContainer.style.display = 'none';
+    });
+    
+    customGoalsTab.addEventListener('click', () => {
+        customGoalsTab.classList.add('active');
+        selectTasksTab.classList.remove('active');
+        customGoalsContainer.style.display = 'block';
+        selectTasksContainer.style.display = 'none';
+    });
+    
+    // Task search input listener
+    taskSearchInput.addEventListener('input', filterTasks);
+
+    // Function to handle promotion of tasks to main goals (inside scope)
+    function handleTaskPromotion() {
+        if (!tempPromotionData) return;
+        
+        const { taskText, dateString } = tempPromotionData;
+        
+        // Get date in readable format
+        const [year, month, day] = dateString.split('-');
+        const dateObj = new Date(year, month - 1, day);
+        const formattedDate = dateObj.toLocaleDateString('en-US', { 
+            month: 'short', day: 'numeric'
+        });
+        
+        // Find the event that contains this task
+        let eventText = "";
+        let deadline = null;
+        if (notes[dateString]) {
+            for (const event of notes[dateString]) {
+                if (event.checklist) {
+                    for (const item of event.checklist) {
+                        if (item.task === taskText) {
+                            eventText = event.text || "(No description)";
+                            deadline = item.deadline || null;
+                            break;
+                        }
+                    }
+                    if (eventText) break;
+                }
+            }
+        }
+        
+        // Create goal text with date and event reference
+        let goalText = eventText 
+            ? `${taskText} (from "${eventText}" on ${formattedDate})`
+            : `${taskText} (from ${formattedDate})`;
+        
+        // Append deadline information if available
+        if (deadline) {
+            goalText += ` [Due: ${deadline}]`;
+        }
+        
+        // Add to main goals (limit to 5)
+        if (mainGoals.length >= 5) {
+            if (confirm("You already have 5 items in your list. Replace the last one with this task?")) {
+                mainGoals[4] = { text: goalText, completed: false };
+            } else {
+                tempPromotionData = null;
+                return; // User cancelled
+            }
+        } else {
+            mainGoals.push({ text: goalText, completed: false });
+        }
+        
+        // Save goals to localStorage
+        localStorage.setItem('mainGoals', JSON.stringify(mainGoals));
+        
+        // If logged in, also save to Firebase
+        if (firebase.auth().currentUser) {
+            db.collection('userNotes').doc(firebase.auth().currentUser.uid).update({
+                mainGoals: mainGoals
+            }).then(() => {
+                console.log('Things to do today saved to Firebase');
+            }).catch(error => {
+                console.error('Error saving to-do items:', error);
+            });
+        }
+        
+        // Update goals display
+        renderMainGoals();
+        
+        // Show visual success indicator (instead of alert)
+        showPromotionSuccess(taskText);
+        
+        // Clear the temporary data
+        tempPromotionData = null;
+    }
+    
+    // Function to show promotion success without using alert
+    function showPromotionSuccess(taskText) {
+        // Create a toast notification element
+        const toast = document.createElement('div');
+        toast.className = 'promotion-toast';
+        toast.innerHTML = `
+            <div class="toast-message">
+                <div class="toast-title">Added to Things To Do Today</div>
+                <div class="toast-text">"${taskText}"</div>
+            </div>
+        `;
+        document.body.appendChild(toast);
+        
+        // Animate in
+        setTimeout(() => {
+            toast.classList.add('show');
+        }, 10);
+        
+        // Remove after 3 seconds
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => {
+                document.body.removeChild(toast);
+            }, 300); // Wait for fade out animation
+        }, 3000);
+    }
+    
+    // Listen for promote task events
+    document.addEventListener('promoteTask', handleTaskPromotion);
+
+    // Add resize listener
+    window.addEventListener('resize', renderCalendarView);
+
     // Add event listener for Today button
     document.getElementById('today-button').addEventListener('click', () => {
         console.log('[CALENDAR] Today button clicked');
@@ -2174,9 +2473,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         
-        // Reset calendar view to current month
-        currentMonthDate = new Date(today.getFullYear(), today.getMonth(), 1);
-        currentMonthDate.setHours(0, 0, 0, 0);
+        // Reset all calendar views to current date
+        desktopMonthDate = new Date(today.getFullYear(), today.getMonth(), 1);
+        desktopMonthDate.setHours(0, 0, 0, 0);
+        
+        mobileMonthDate = new Date(today.getFullYear(), today.getMonth(), 1);
+        mobileMonthDate.setHours(0, 0, 0, 0);
         
         // Set mobile week view to start on the Sunday before the current date
         const dayOfWeek = today.getDay();
@@ -2191,366 +2493,342 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('[CALENDAR] Calendar reset to today');
     });
 
-    // Handle month selection from dropdown
-    if (document.getElementById('month-select')) {
-        const monthSelectElement = document.getElementById('month-select');
-        monthSelectElement.addEventListener('change', () => {
-            const selectedMonth = parseInt(monthSelectElement.value);
-            const yearDisplay = document.getElementById('year-display');
-            const year = yearDisplay ? parseInt(yearDisplay.textContent) : currentMonthDate.getFullYear();
-            
-            // Update month view
-            currentMonthDate = new Date(year, selectedMonth, 1);
-            currentMonthDate.setHours(0, 0, 0, 0);
-            renderCalendarView();
-        });
-    }
+    // Initial Render
+    renderCalendarView();
 
-    // Update month/year display
-    function updateMonthSelect() {
-        // This function now only needs to update the month-year-1 display
-        // since we removed the month selector dropdown
-        const monthYearElement = document.getElementById('month-year-1');
-        if (monthYearElement) {
-            const options = { year: 'numeric', month: 'long' };
-            monthYearElement.textContent = currentMonthDate.toLocaleDateString('en-US', options);
-        }
-    }
-
-    // --- Event Progress Panel for Multiple Events ---
-    function renderEventProgressPanel() {
-        // Always use the global notes object
-        const globalNotes = window.calendarNotes;
+    // Weather Widget functionality
+    function fetchWeatherData() {
+        // API key for OpenWeatherMap
+        const apiKey = 'b2cfa04dc7aff6a53b64fabc3a5307bc';
+        // Default coordinates (used as fallback)
+        const defaultLat = 42.2192;
+        const defaultLon = -87.9795;
+        const units = 'imperial'; // Use imperial for Fahrenheit
         
-        console.log('[PROGRESS PANEL] Starting to render progress panel');
+        // Get the weather container and create a location button if needed
+        const weatherWidget = document.getElementById('weather-widget');
         
-        // Clear existing panel content
-        progressItemsContainer.innerHTML = '';
-        
-        // Get all dates with events
-        const datesWithEvents = Object.entries(globalNotes);
-        console.log('[PROGRESS PANEL] Found', datesWithEvents.length, 'dates with events');
-        
-        // Empty check for test mode
-        if (datesWithEvents.length === 0) {
-            const noEventsMessage = document.createElement('div');
-            noEventsMessage.classList.add('no-events-message-panel');
-            noEventsMessage.innerHTML = `
-                <p>No tasks to track yet!</p>
-                <p class="subtext">Add checklists to events to see your progress here.</p>
-            `;
-            progressItemsContainer.appendChild(noEventsMessage);
-            return;
+        // Function to show loading state in the weather widget
+        function showWeatherLoading() {
+            document.getElementById('weather-condition').textContent = 'Fetching weather...';
+            document.getElementById('weather-location').textContent = 'Locating...';
         }
         
-        // Filter to include only events with checklists and sort by date
-        let eventsWithChecklists = [];
-        
-        datesWithEvents.forEach(([dateString, eventsArray]) => {
-            console.log(`Processing date ${dateString} with ${eventsArray.length} events`);
+        // Function to fetch weather with provided coordinates
+        function getWeatherFromCoords(lat, lon) {
+            // API URL with the provided key and coordinates
+            const weatherUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=${units}&appid=${apiKey}`;
             
-            // For each date, filter to events with checklists
-            const dateEvents = eventsArray.filter(event => {
-                const hasChecklist = event.checklist && event.checklist.length > 0;
-                console.log(`Event ${event.id}: has checklist = ${hasChecklist}, items: ${event.checklist ? event.checklist.length : 0}`);
-                return hasChecklist;
-            });
+            // Show loading state
+            showWeatherLoading();
             
-            console.log(`Found ${dateEvents.length} events with checklists for ${dateString}`);
-            
-            // Add date and event details to our array
-            dateEvents.forEach(event => {
-                eventsWithChecklists.push({
-                    dateString,
-                    event
-                });
-            });
-        });
-        
-        console.log('Total events with checklists:', eventsWithChecklists.length);
-        
-        // Sort by date
-        eventsWithChecklists.sort((a, b) => new Date(a.dateString) - new Date(b.dateString));
-        
-        // If no events with checklists, show message
-        if (eventsWithChecklists.length === 0) {
-            const noEventsMessage = document.createElement('div');
-            noEventsMessage.classList.add('no-events-message-panel');
-            noEventsMessage.innerHTML = `
-                <p>No tasks to track yet!</p>
-                <p class="subtext">Add checklists to your events by clicking on a calendar date.</p>
-            `;
-            progressItemsContainer.appendChild(noEventsMessage);
-            return;
-        }
-        
-        // Group events by date for the panel
-        const groupedByDate = {};
-        
-        eventsWithChecklists.forEach(item => {
-            if (!groupedByDate[item.dateString]) {
-                groupedByDate[item.dateString] = [];
-            }
-            groupedByDate[item.dateString].push(item.event);
-        });
-        
-        // Create and append elements for each date
-        Object.entries(groupedByDate).forEach(([dateString, events]) => {
-            // Create the card container
-            const itemContainer = document.createElement('div');
-            itemContainer.classList.add('progress-item');
-
-            // Create header section with date
-            const headerSection = document.createElement('div');
-            headerSection.classList.add('progress-item-header');
-            
-            // Add Date
-            const itemDate = document.createElement('span');
-            itemDate.classList.add('item-date');
-            const [year, month, day] = dateString.split('-');
-            const dateObj = new Date(year, month-1, day);
-            
-            // Format date with day of week and relative time indicator
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const relativeTimeStr = formatTimeDifference(dateObj, today);
-            
-            itemDate.textContent = `${dateObj.toLocaleDateString('en-US', { 
-                weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' 
-            })} ${relativeTimeStr}`;
-            
-            headerSection.appendChild(itemDate);
-
-            // Add Date Text
-            const itemText = document.createElement('div');
-            itemText.classList.add('item-text');
-            itemText.textContent = `${events.length} event${events.length > 1 ? 's' : ''}`;
-            headerSection.appendChild(itemText);
-            
-            itemContainer.appendChild(headerSection);
-
-            // Add Events Container
-            const eventsContainer = document.createElement('div');
-            eventsContainer.classList.add('events-container');
-            
-            // Add each event
-            events.forEach((event, index) => {
-                const eventDiv = document.createElement('div');
-                eventDiv.className = 'panel-event';
-                
-                // Create event header with time, text and edit button
-                const eventHeader = document.createElement('div');
-                eventHeader.classList.add('panel-event-header');
-                
-                // Add event time and text
-                const eventDetails = document.createElement('div');
-                eventDetails.classList.add('panel-event-details');
-                
-                if (event.time) {
-                    const timeElement = document.createElement('span');
-                    timeElement.classList.add('panel-event-time');
-                    timeElement.textContent = event.time;
-                    eventDetails.appendChild(timeElement);
-                }
-                
-                const textElement = document.createElement('span');
-                textElement.classList.add('panel-event-text');
-                textElement.textContent = event.text || '(No description)';
-                eventDetails.appendChild(textElement);
-                
-                eventHeader.appendChild(eventDetails);
-                
-                // Create edit button
-                const editButton = document.createElement('button');
-                editButton.className = 'panel-event-edit';
-                editButton.innerHTML = '<span class="edit-icon">✎</span> Edit';
-                editButton.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    openNoteModal(dateString);
-                    // Find and click the event in the modal to edit it
-                    setTimeout(() => {
-                        const eventItems = eventsListElement.querySelectorAll('.event-item');
-                        eventItems.forEach(item => {
-                            if (item.dataset.eventId == event.id) {
-                                item.click();
-                            }
-                        });
-                    }, 100);
-                });
-                
-                eventHeader.appendChild(editButton);
-                eventDiv.appendChild(eventHeader);
-                
-                // Add checklist progress for this event
-                if (event.checklist && event.checklist.length > 0) {
-                    const totalItems = event.checklist.length;
-                    const completedItems = event.checklist.filter(item => item.done).length;
-                    const percent = totalItems > 0 ? (completedItems / totalItems) * 100 : 0;
-
-            const progressContainer = document.createElement('div');
-            progressContainer.classList.add('progress-container');
-            
-            const progressBarContainer = document.createElement('div');
-            progressBarContainer.classList.add('progress-bar-container');
-            
-            const progressBar = document.createElement('div');
-            progressBar.classList.add('progress-bar');
-                    progressBar.style.width = `${percent}%`;
-            
-            progressBarContainer.appendChild(progressBar);
-            progressContainer.appendChild(progressBarContainer);
-
-            const progressSummary = document.createElement('div');
-            progressSummary.classList.add('progress-summary');
-                    progressSummary.textContent = `${completedItems}/${totalItems} Tasks`;
+            // Fetch weather data
+            fetch(weatherUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Weather data fetch failed');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Update weather widget with fetched data
+                    updateWeatherWidget(data);
                     
-                    // Add toggle button
-                    const toggleButton = document.createElement('button');
-                    toggleButton.classList.add('toggle-checklist-button');
-                    toggleButton.textContent = 'Hide Tasks';
-                    toggleButton.addEventListener('click', (e) => {
-                        e.stopPropagation(); // Prevent event bubble to parent
-                        const checklistContainer = e.target.nextElementSibling;
-                        if (checklistContainer.style.display === 'none' || !checklistContainer.style.display) {
-                            checklistContainer.style.display = 'block';
-                            e.target.textContent = 'Hide Tasks';
+                    // Store location in localStorage for future use
+                    if (lat !== defaultLat && lon !== defaultLon) {
+                        localStorage.setItem('weatherLat', lat);
+                        localStorage.setItem('weatherLon', lon);
+                        localStorage.setItem('weatherLocationTime', Date.now());
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching weather data:', error);
+                    document.getElementById('weather-condition').textContent = 'Unable to fetch weather data';
+                    document.getElementById('weather-location').textContent = 'Location unavailable';
+                });
+        }
+        
+        // Function to add location request button
+        function addLocationRequestButton() {
+            // Check if button already exists
+            if (document.getElementById('request-location-btn')) return;
+            
+            // Create a location request button
+            const locationBtn = document.createElement('button');
+            locationBtn.id = 'request-location-btn';
+            locationBtn.className = 'location-request-button';
+            locationBtn.innerHTML = '<span>📍</span> Use my location';
+            locationBtn.addEventListener('click', requestLocationPermission);
+            
+            // Add button to weather widget header
+            const weatherHeader = weatherWidget.querySelector('.weather-header');
+            weatherHeader.appendChild(locationBtn);
+        }
+        
+        // Function to request location permission
+        function requestLocationPermission() {
+            showWeatherLoading();
+            
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    // Success callback
+                    (position) => {
+                        const lat = position.coords.latitude;
+                        const lon = position.coords.longitude;
+                        console.log('[WEATHER] Got user location:', lat, lon);
+                        getWeatherFromCoords(lat, lon);
+                        
+                        // Hide the location button if we successfully got location
+                        const locationBtn = document.getElementById('request-location-btn');
+                        if (locationBtn) {
+                            locationBtn.style.display = 'none';
+                        }
+                    },
+                    // Error callback
+                    (error) => {
+                        console.error('[WEATHER] Geolocation error:', error);
+                        // If user denied permission, use default location
+                        getWeatherFromCoords(defaultLat, defaultLon);
+                        // Show a message that we're using default location
+                        document.getElementById('weather-location').textContent = 'Default location';
+                    },
+                    // Options
+                    { timeout: 10000 }
+                );
             } else {
-                            checklistContainer.style.display = 'none';
-                            e.target.textContent = 'Show Tasks';
-                        }
-                    });
-                    
-                    // Create checklist container (initially visible)
-            const checklistContainer = document.createElement('div');
-                    checklistContainer.classList.add('panel-checklist-container');
-                    checklistContainer.style.display = 'block';
+                // Browser doesn't support geolocation
+                console.log('[WEATHER] Geolocation not supported');
+                getWeatherFromCoords(defaultLat, defaultLon);
+            }
+        }
+        
+        // Check if we have a recent saved location
+        const savedLat = localStorage.getItem('weatherLat');
+        const savedLon = localStorage.getItem('weatherLon');
+        const savedTime = localStorage.getItem('weatherLocationTime');
+        const locationAge = savedTime ? Date.now() - parseInt(savedTime) : null;
+        
+        // If we have saved coordinates less than 1 hour old (3600000 ms), use them
+        if (savedLat && savedLon && locationAge && locationAge < 3600000) {
+            console.log('[WEATHER] Using saved location');
+            getWeatherFromCoords(parseFloat(savedLat), parseFloat(savedLon));
+        } else {
+            // Try to get fresh coordinates
+            console.log('[WEATHER] Requesting fresh location');
+            addLocationRequestButton();
             
-                    // Add checklist items
-                    const checklistUl = document.createElement('ul');
-                    checklistUl.classList.add('panel-checklist');
-
-                    // Add clickable checklist items
-                    event.checklist.forEach((item, index) => {
-                const li = document.createElement('li');
-
-                // Create checkbox with proper event handler
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                checkbox.id = `panel-cb-${event.id}-${index}`;
-                checkbox.checked = item.done;
-                
-                // Create label once
-                const label = document.createElement('label');
-                label.classList.add('panel-checklist-label');
-                label.htmlFor = checkbox.id;
-                label.textContent = item.task;
-                
-                if (item.done) {
-                    label.classList.add('completed');
-                }
-                
-                // Prevent event propagation to parent
-                checkbox.addEventListener('click', (e) => {
-                    e.stopPropagation(); // Prevent opening edit modal
-                });
-                
-                label.addEventListener('click', (e) => {
-                    e.stopPropagation(); // Prevent opening edit modal
-                });
-                
-                // Add elements to the list item
-                li.appendChild(checkbox);
-                li.appendChild(label);
-                
-                // Add deadline display if there is a deadline - now positioned after label
-                if (item.deadline) {
-                    const deadlineElement = createDeadlineElement(item.deadline);
-                    if (deadlineElement) {
-                        deadlineElement.addEventListener('click', (e) => {
-                    e.stopPropagation(); // Prevent opening edit modal
-                });
-                        li.appendChild(deadlineElement);
-                    }
-                }
-                
-                // Add event listener for checkbox changes
-                checkbox.addEventListener('change', (e) => {
-                    // Always use the global notes object
-                    const globalNotes = window.calendarNotes;
-                    
-                    // Update the checked state in the UI
-                    label.classList.toggle('completed', checkbox.checked);
-                    
-                    // Find and update the item in the data structure
-                    const updatedEvents = globalNotes[dateString] || [];
-                    const eventIndex = updatedEvents.findIndex(e => e.id === event.id);
-                    
-                    if (eventIndex !== -1) {
-                        const checklistItems = updatedEvents[eventIndex].checklist || [];
-                        const itemIndex = checklistItems.findIndex(i => i.task === item.task);
-                        
-                        if (itemIndex !== -1) {
-                            // Update the done state
-                            checklistItems[itemIndex].done = checkbox.checked;
-                            
-                            // Update in the data structure
-                            updatedEvents[eventIndex].checklist = checklistItems;
-                            globalNotes[dateString] = updatedEvents;
-                            // Update local reference
-                            notes = globalNotes;
-                            
-                            // Update progress bar
-                            const totalItems = checklistItems.length;
-                            const completedItems = checklistItems.filter(i => i.done).length;
-                            const percent = totalItems > 0 ? (completedItems / totalItems) * 100 : 0;
-                            progressBar.style.width = `${percent}%`;
-                            progressSummary.textContent = `${completedItems}/${totalItems} Tasks`;
-                            
-                            // Save to Firebase if signed in
-                            if (firebase.auth().currentUser) {
-                                saveNotesToFirebase();
-                                console.log('[CHECKBOX] Saved change to Firebase');
-                            } else {
-                                console.log('[CHECKBOX] Test mode: Checklist update saved to memory only');
-                            }
-                        }
-                    }
-                });
-                        
-                        // Append the list item to the checklist
-                        checklistUl.appendChild(li);
-                    });
-                    
-                    checklistContainer.appendChild(checklistUl);
-                    progressContainer.appendChild(progressSummary);
-                    
-                    eventDiv.appendChild(progressContainer);
-                    eventDiv.appendChild(toggleButton);
-                    eventDiv.appendChild(checklistContainer);
-                }
-                
-                eventsContainer.appendChild(eventDiv);
-            });
-            
-            itemContainer.appendChild(eventsContainer);
-            progressItemsContainer.appendChild(itemContainer);
-        });
+            // Auto-prompt for location if this is the first time
+            if (!localStorage.getItem('weatherLocationRequested')) {
+                localStorage.setItem('weatherLocationRequested', 'true');
+                requestLocationPermission();
+            } else {
+                // If not first time, use default location but show location button
+                getWeatherFromCoords(defaultLat, defaultLon);
+            }
+        }
     }
 
-    // --- Modal Functions ---
-    function openNoteModal(dateString) {
-        // TEST MODE: Allow adding notes without signing in
-        // if (!firebase.auth().currentUser) {
-        //     alert("Please sign in to add or view notes");
-        //     return;
-        // }
+    function updateWeatherWidget(data) {
+        // Extract weather information
+        const temp = Math.round(data.main.temp);
+        const condition = data.weather[0].description;
+        const locationName = data.name;
+        const humidity = data.main.humidity;
+        const windSpeed = Math.round(data.wind.speed);
+        const iconCode = data.weather[0].icon;
         
-        console.log('------ OPENING NOTE MODAL ------');
-        console.log('Opening modal for date:', dateString);
+        // Update UI elements
+        document.getElementById('weather-temp').textContent = temp;
+        document.getElementById('weather-condition').textContent = capitalizeEachWord(condition);
+        document.getElementById('weather-location').textContent = locationName;
+        document.getElementById('weather-humidity').textContent = humidity;
+        document.getElementById('weather-wind').textContent = windSpeed;
         
-        selectedDateString = dateString;
-        const [year, month, day] = dateString.split('-');
-        const dateObj = new Date(year, month - 1, day);
+        // Update weather icon
+        const iconUrl = `https://openweathermap.org/img/wn/${iconCode}@4x.png`;
+        document.getElementById('weather-icon-img').src = iconUrl;
+        
+        // Update date
+        const today = new Date();
+        const options = { weekday: 'long', month: 'short', day: 'numeric' };
+        document.getElementById('weather-date').textContent = today.toLocaleDateString('en-US', options);
+        
+        console.log('[WEATHER] Weather data updated successfully');
+    }
+    
+    function capitalizeEachWord(str) {
+        return str.replace(/(^\w{1})|(\s+\w{1})/g, letter => letter.toUpperCase());
+    }
+    
+    // Fetch weather on initial load
+    fetchWeatherData();
+    
+    // Remove refresh button event listener (button has been removed)
+    
+    // Refresh weather data every 30 minutes (1800000 ms)
+    setInterval(fetchWeatherData, 1800000);
+    
+    // Get month selector elements
+    const monthSelect = document.getElementById('month-select');
+    const yearDisplay = document.getElementById('year-display');
+
+    // Set initial values
+    monthSelect.value = desktopMonthDate.getMonth();
+    yearDisplay.textContent = desktopMonthDate.getFullYear();
+
+    // Update month select when calendar changes
+    function updateMonthSelect() {
+        monthSelect.value = desktopMonthDate.getMonth();
+        yearDisplay.textContent = desktopMonthDate.getFullYear();
+    }
+
+    // Handle month selection
+    monthSelect.addEventListener('change', () => {
+        const selectedMonth = parseInt(monthSelect.value);
+        const currentYear = parseInt(yearDisplay.textContent);
+        
+        // Update desktop view
+        desktopMonthDate = new Date(currentYear, selectedMonth, 1);
+        desktopMonthDate.setHours(0, 0, 0, 0);
+        
+        // Update mobile view
+        mobileMonthDate = new Date(currentYear, selectedMonth, 1);
+        mobileMonthDate.setHours(0, 0, 0, 0);
+        
+        // Update week view to start of the month
+        mobileWeekStartDate = new Date(currentYear, selectedMonth, 1);
+        mobileWeekStartDate.setHours(0, 0, 0, 0);
+        
+    renderCalendarView();
+    });
+    
+    // Function to check if the day has changed since last refresh
+    function checkDateChange() {
+        const today = new Date().toLocaleDateString();
+        const lastDate = localStorage.getItem('lastDateCheck');
+        
+        if (today !== lastDate) {
+            console.log('[DEADLINES] Date changed, refreshing deadline displays');
+            localStorage.setItem('lastDateCheck', today);
+            refreshAllDeadlineDisplays();
+        }
+    }
+
+    // Call checkDateChange on initial load and every hour
+    checkDateChange();
+    setInterval(checkDateChange, 3600000); // 1 hour in milliseconds
+
+    // Update month select when using prev/next buttons
+    const originalRenderCalendarView = renderCalendarView;
+    renderCalendarView = function() {
+        originalRenderCalendarView();
+        updateMonthSelect();
+    };
+
+    // Add function to update modal instructions based on whether there are events
+    function updateModalInstructions() {
+        const eventsForDay = window.calendarNotes[selectedDateString] || [];
+        const modalInstructions = document.querySelector('.modal-instructions');
+        
+        if (eventsForDay.length === 0) {
+            modalInstructions.textContent = 'No events for this date. Create a new event below.';
+        } else {
+            modalInstructions.textContent = 'View and manage events for this date. Click on an event to edit its details.';
+        }
+    }
+});
+
+// Function that stores promotion data and is called by the star buttons
+function promoteTaskToMainGoal(taskText, dateString) {
+    tempPromotionData = { taskText, dateString };
+    
+    // Create a custom event to trigger the internal promotion function
+    const event = new CustomEvent('promoteTask');
+    document.dispatchEvent(event);
+}
+
+function closeGoalsModal() {
+    console.log('Closing goals modal...');
+    goalsModal.style.display = 'none';
+} 
+
+// Function to calculate days left until deadline and return formatted display
+function calculateDaysLeft(deadline) {
+    if (!deadline) return null;
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const deadlineDate = new Date(deadline);
+    deadlineDate.setHours(0, 0, 0, 0);
+    
+    const diffTime = deadlineDate - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    let displayClass = '';
+    let displayText = '';
+    
+    if (diffDays < 0) {
+        displayClass = 'overdue';
+        displayText = 'Overdue';
+    } else if (diffDays === 0) {
+        displayClass = 'urgent';
+        displayText = 'Due today';
+    } else if (diffDays === 1) {
+        displayClass = 'urgent';
+        displayText = 'Due tomorrow';
+    } else if (diffDays <= 3) {
+        displayClass = 'warning';
+        displayText = `${diffDays} days left`;
+    } else {
+        displayClass = 'comfortable';
+        displayText = `${diffDays} days left`;
+    }
+    
+    return {
+        days: diffDays,
+        class: displayClass,
+        text: displayText
+    };
+}
+
+// Function to create a deadline display element
+function createDeadlineElement(deadline) {
+    if (!deadline) return null;
+    
+    const daysLeft = calculateDaysLeft(deadline);
+    
+    const deadlineElement = document.createElement('span');
+    deadlineElement.classList.add('days-left', daysLeft.class);
+    deadlineElement.textContent = daysLeft.text;
+    
+    return deadlineElement;
+}
+
+// Function to refresh all deadline displays on the page
+function refreshAllDeadlineDisplays() {
+    console.log('[DEADLINES] Refreshing all deadline displays');
+    
+    // Refresh deadline displays in the main goals section
+    const goalItems = document.querySelectorAll('.goal-item');
+    goalItems.forEach(item => {
+        const deadlineElement = item.querySelector('.days-left');
+        if (deadlineElement) {
+            // Extract deadline from the goal text
+            const goalText = item.querySelector('label').textContent;
+            const deadlineRegex = /\[Due: (\d{4}-\d{2}-\d{2})\]/;
+            const deadlineMatch = goalText.match(deadlineRegex);
+            
+            if (deadlineMatch && deadlineMatch[1]) {
+                const deadline = deadlineMatch[1];
+                const newDeadlineElement = createDeadlineElement(deadline);
+                if (newDeadlineElement) {
+                    item.replaceChild(newDeadlineElement, deadlineElement);
+                }
+            }
+        }
+    });
+    
     // Refresh deadline displays in progress panel
     const checklistItems = document.querySelectorAll('.panel-checklist li');
     checklistItems.forEach(item => {
@@ -2564,194 +2842,4 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     console.log('[DEADLINES] Deadline displays refreshed');
-} 
-
-    // --- Fix Button Event Listeners ---
-
-    // Make sure Edit Goals button works
-    if (editGoalsButton) {
-        editGoalsButton.addEventListener('click', openGoalsModal);
-        console.log('[INIT] Added event listener to Edit Goals button');
-    }
-
-    if (goalsCloseButton) {
-        goalsCloseButton.addEventListener('click', closeGoalsModal);
-        console.log('[INIT] Added event listener to Goals Close button');
-    }
-
-    if (saveGoalsButton) {
-        saveGoalsButton.addEventListener('click', saveMainGoals);
-        console.log('[INIT] Added event listener to Save Goals button');
-    }
-
-    // Fix news tab functionality
-    initializeNewsTabs();
-    fetchNews();
-
-    // Add checklist event listeners
-    addItemButton.addEventListener('click', addNewEventChecklistItem);
-    editAddItemButton.addEventListener('click', addEditEventChecklistItem);
-
-    // Add event buttons
-    addEventButton.addEventListener('click', addEvent);
-    saveEditedEventButton.addEventListener('click', saveEditedEvent);
-    cancelEditButton.addEventListener('click', hideEditEventSection);
-    deleteEventButton.addEventListener('click', handleDeleteEvent);
-
-    // Modal close button
-    noteCloseButton.addEventListener('click', closeNoteModal);
-
-    // Fix task filtering
-    if (taskSearchInput) {
-        taskSearchInput.addEventListener('input', filterTasks);
-    }
-
-    // Goal tabs
-    if (selectTasksTab) {
-        selectTasksTab.addEventListener('click', () => {
-            selectTasksTab.classList.add('active');
-            customGoalsTab.classList.remove('active');
-            selectTasksContainer.style.display = 'block';
-            customGoalsContainer.style.display = 'none';
-        });
-    }
-
-    if (customGoalsTab) {
-        customGoalsTab.addEventListener('click', () => {
-            customGoalsTab.classList.add('active');
-            selectTasksTab.classList.remove('active');
-            customGoalsContainer.style.display = 'block';
-            selectTasksContainer.style.display = 'none';
-        });
-    }
-
-    // Render initial view
-    renderCalendarView();
-    renderMainGoals();
-    renderEventProgressPanel();
-
-    // --- Weather Widget Functionality ---
-    function initializeWeatherWidget() {
-        const requestLocationButton = document.getElementById('request-location-button');
-        const weatherLocation = document.getElementById('weather-location');
-        const weatherTemp = document.getElementById('weather-temp');
-        const weatherCondition = document.getElementById('weather-condition');
-        const weatherHumidity = document.getElementById('weather-humidity');
-        const weatherWind = document.getElementById('weather-wind');
-        const weatherIcon = document.getElementById('weather-icon-img');
-        const weatherDate = document.getElementById('weather-date');
-        
-        // Set current date in weather widget
-        const today = new Date();
-        weatherDate.textContent = today.toLocaleDateString('en-US', { 
-            weekday: 'short', 
-            month: 'short', 
-            day: 'numeric' 
-        });
-        
-        // Function to get weather data
-        function fetchWeatherData(latitude, longitude) {
-            // Use OpenWeatherMap API for weather data
-            const apiKey = 'bd5e378503939ddaee76f12ad7a97608'; // Free API key, usage limits apply
-            const apiUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&units=imperial&appid=${apiKey}`;
-            
-            fetch(apiUrl)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`Weather API error: ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    console.log('[WEATHER] API response:', data);
-                    
-                    // Update weather widget with data
-                    weatherLocation.textContent = data.name;
-                    weatherTemp.textContent = Math.round(data.main.temp);
-                    weatherCondition.textContent = data.weather[0].main;
-                    weatherHumidity.textContent = data.main.humidity;
-                    weatherWind.textContent = Math.round(data.wind.speed);
-                    
-                    // Set weather icon
-                    const iconCode = data.weather[0].icon;
-                    weatherIcon.src = `https://openweathermap.org/img/wn/${iconCode}@2x.png`;
-                    
-                    // Hide the request button once we have weather data
-                    requestLocationButton.style.display = 'none';
-                })
-                .catch(error => {
-                    console.error('[WEATHER] Error fetching weather:', error);
-                    weatherCondition.textContent = 'Weather data unavailable';
-                    weatherLocation.textContent = 'Error loading weather data';
-                    
-                    // Keep the button visible on error
-                    requestLocationButton.style.display = 'block';
-                });
-        }
-        
-        // Function to request location and get weather
-        function requestLocationAndWeather() {
-            if (navigator.geolocation) {
-                weatherCondition.textContent = 'Requesting location...';
-                
-                navigator.geolocation.getCurrentPosition(
-                    // Success callback
-                    (position) => {
-                        const { latitude, longitude } = position.coords;
-                        console.log(`[WEATHER] Location obtained: ${latitude}, ${longitude}`);
-                        fetchWeatherData(latitude, longitude);
-                    },
-                    // Error callback
-                    (error) => {
-                        console.error('[WEATHER] Geolocation error:', error);
-                        
-                        let errorMessage = 'Location access denied';
-                        if (error.code === error.PERMISSION_DENIED) {
-                            errorMessage = 'Location permission denied. Please enable in settings.';
-                        } else if (error.code === error.POSITION_UNAVAILABLE) {
-                            errorMessage = 'Location information unavailable.';
-                        } else if (error.code === error.TIMEOUT) {
-                            errorMessage = 'Location request timed out.';
-                        }
-                        
-                        weatherCondition.textContent = 'Cannot access location';
-                        weatherLocation.textContent = errorMessage;
-                        
-                        // Keep button visible
-                        requestLocationButton.style.display = 'block';
-                    },
-                    // Options
-                    { 
-                        maximumAge: 600000, // Cache location for 10 minutes
-                        timeout: 10000,     // 10 second timeout
-                        enableHighAccuracy: false // No need for high accuracy
-                    }
-                );
-            } else {
-                // Browser doesn't support geolocation
-                weatherCondition.textContent = 'Geolocation not supported';
-                weatherLocation.textContent = 'Please use a different browser';
-            }
-        }
-        
-        // Add click handler to request button
-        if (requestLocationButton) {
-            requestLocationButton.addEventListener('click', requestLocationAndWeather);
-        }
-        
-        // Try to get weather automatically on page load (will only work if user previously granted permission)
-        requestLocationAndWeather();
-    }
-
-    // Add this to the event listeners section
-    // ... existing code ...
-        // Fix news tab functionality
-        initializeNewsTabs();
-        fetchNews();
-        
-        // Initialize weather widget
-        initializeWeatherWidget();
-        
-        // Add checklist event listeners
-    // ... existing code ...
-});
+}
